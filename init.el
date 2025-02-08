@@ -1,9 +1,5 @@
 (require 'coremacs)
 
-(use-package benchmark-init
-  :ensure t
-  :config (benchmark-init/install))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (setq custom-file null-device
       backup-directory-alist `(("." . ,(expand-file-name (concat user-emacs-directory "backup"))))
@@ -182,7 +178,7 @@
     '(:propertize (:eval (buffer-name)) face mode-line-buffer-id))
 
 (defvar-local al:mode-line-project
-    '(:eval (when-let ((project (project-current)))
+    '(:eval (when-let* ((project (project-current)))
               (propertize (format "(%s)" (project-name project)) 'face `(:background ,(catppuccin-color 'mantle))))))
 
 (defvar-local al:mode-line-major-mode
@@ -232,20 +228,62 @@
 
 (put 'al:header-line-format-right-align 'risky-local-variable t)
 
+(defvar al:mode-line-window-controls-minimize-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [header-line mouse-1] (lambda () (interactive) (iconify-frame)))
+    map))
+
+(defvar al:mode-line-window-controls-maximize-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [header-line mouse-1] (lambda () (interactive) (toggle-frame-maximized)))
+    map))
+
+(defvar al:mode-line-window-controls-close-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [header-line mouse-1] (lambda () (interactive) (save-buffers-kill-terminal)))
+    map))
+
+(defun is-top-right-window-p (window)
+  (let* ((top-windows (window-at-side-list nil 'top))
+         (right-windows (window-at-side-list nil 'right))
+         (top-right-window (car (seq-filter (lambda (elt) (memq elt right-windows)) top-windows))))
+    (eq window top-right-window)))
+
+(defvar-local al:mode-line-window-controls
+    '(:eval
+      (if (is-top-right-window-p (get-buffer-window))
+          (list
+           '(:eval (propertize "—" 'local-map al:mode-line-window-controls-minimize-map
+                               'face `(:foreground ,(catppuccin-color 'text))))
+           " "
+           '(:eval (propertize "▢" 'local-map al:mode-line-window-controls-maximize-map
+                               'face `(:foreground ,(catppuccin-color 'text))))
+           " "
+           '(:eval (propertize "⮽" 'local-map al:mode-line-window-controls-close-map
+                               'face `(:foreground ,(catppuccin-color 'text)))))
+        (list
+           '(:eval (propertize "—" 'face `(:foreground ,(catppuccin-color 'mantle))))
+           " "
+           '(:eval (propertize "▢" 'face `(:foreground ,(catppuccin-color 'mantle))))
+           " "
+           '(:eval (propertize "⮽" 'face `(:foreground ,(catppuccin-color 'mantle))))))))
+
 (defvar al:mode-line-format
   (list al:mode-line-buffer-status
         " "
-        ;; mode-line-buffer-identification
         al:mode-line-buffer-identification
         " "
         al:mode-line-project
         :eval 'al:header-line-format-right-align
         al:mode-line-major-mode
         al:mode-line-eglot
+        "   "
+        al:mode-line-window-controls
         " "))
 
 (use-package emacs
   :ensure nil
+  :after (catppuccin-theme)
   :config
   (setq ring-bell-function (lambda () nil)) ;stfu
   (setq-default c-ts-mode-indent-offset 4)
@@ -254,6 +292,16 @@
   (electric-indent-mode 1)
   (global-subword-mode 1)
   (global-hl-line-mode 1)
+
+  (setq-default window-divider-default-places t
+                window-divider-default-bottom-width 8
+                window-divider-default-right-width 8)
+  (window-divider-mode 1)
+
+  (set-face-attribute 'window-divider nil :foreground (catppuccin-color 'mantle))
+  (set-face-attribute 'window-divider-first-pixel nil :foreground (catppuccin-color 'surface0))
+  (set-face-attribute 'window-divider-last-pixel nil :foreground (catppuccin-color 'surface0))
+  (set-face-attribute 'internal-border nil :background (catppuccin-color 'mantle))
 
   (setq-default fringe-mode '(1 . 1))
   (set-fringe-mode '(1 . 1))
@@ -282,7 +330,7 @@
   (interactive "d")
   (if treesit-primary-parser
       (let* ((node (treesit-node-at point)))
-        (when-let ((comment-type (comment-descendent-p node)))
+        (when-let* ((comment-type (comment-descendent-p node)))
           (cond 
            ((string= (treesit-node-type comment-type) "comment")
             (newline)
