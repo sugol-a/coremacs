@@ -129,6 +129,12 @@
                                                                 1
                                                               -1))))))))
 
+(use-package multiple-cursors
+  :defer t
+  :bind
+  ("C-c m l" . #'mc/edit-lines)
+  ("C-c m ;" . #'mc/mark-next-like-this))
+
 (add-to-list 'auto-mode-alist '("\\.journal\\'" . hledger-mode))
 
 (add-hook 'emacs-lisp-mode-hook (lambda ()
