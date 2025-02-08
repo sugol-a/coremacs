@@ -167,6 +167,8 @@
 (keymap-set prog-mode-map "M-RET" #'continue-multiline-comment)
 (keymap-set prog-mode-map "C-M-;" #'insert-doc-comment)
 
+(keymap-global-set "C-," #'toggle-popup-ansi-term)
+
 ;; STUFF
 ;; ============================================================
 
@@ -377,6 +379,30 @@
         (newline-and-indent)
         (insert " */"))
       (insert comment-padding))))
+
+(defun popup-ansi-term ()
+  (interactive)
+  (if-let* ((ansi-term-buffer (get-buffer "*ansi-term*"))
+            (ansi-term-window (get-buffer-window ansi-term-buffer)))
+      (select-window ansi-term-window)
+    (let ((window (split-window (frame-root-window) -10 'below nil)))
+      (select-window window)
+
+      (if-let* ((ansi-term-buffer (get-buffer "*ansi-term*")))
+          (set-window-buffer window ansi-term-buffer)
+        (ansi-term (getenv "SHELL")))
+      (set-window-dedicated-p window t))))
+
+(defun unpopup-ansi-term ()
+  (interactive)
+  (delete-window (get-buffer-window (get-buffer "*ansi-term*"))))
+
+(defun toggle-popup-ansi-term ()
+  (interactive)
+  (if-let* ((buffer (get-buffer "*ansi-term*"))
+            (window (get-buffer-window buffer)))
+      (unpopup-ansi-term)
+    (popup-ansi-term)))
 
 (defun c-mode-setup ()
   (c-set-style "bsd")
