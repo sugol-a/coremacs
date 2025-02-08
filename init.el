@@ -33,7 +33,7 @@
 
 (use-package flycheck
   :config
-  (setq flycheck-display-errors-delay 0.2)
+  (setq flycheck-display-errors-delay 0.1)
   :bind ("C-c C-x C-l" . flycheck-list-errors))
 
 (use-package vertico
@@ -190,6 +190,19 @@
     '(:eval (when (bound-and-true-p eglot--managed-mode)
               "*")))
 
+(defvar-local al:mode-line-flycheck
+    '(:eval (when (bound-and-true-p flycheck-current-errors)
+              (let ((error-count (length (seq-filter (lambda (elt) (eq 'error (flycheck-error-level elt))) flycheck-current-errors)))
+                    (warning-count (length (seq-filter (lambda (elt) (eq 'warning (flycheck-error-level elt))) flycheck-current-errors)))
+                    (info-count (length (seq-filter (lambda (elt) (eq 'info (flycheck-error-level elt))) flycheck-current-errors))))
+                (when (or (> error-count 0) (> warning-count 0) (> info-count 0))
+                  (list (when (> error-count 0)
+                          (propertize (format "%d" error-count) 'face `(:foreground ,(catppuccin-color 'red))))
+                        (when (> warning-count 0)
+                          (propertize (format "%d" warning-count) 'face `(:foreground ,(catppuccin-color 'yellow))))
+                        (when (> info-count 0)
+                          (propertize (format "%d" info-count) 'face `(:foreground ,(catppuccin-color 'teal))))))))))
+
 (defun al:header-line-format-right-align ()
   "`mode-line-format-right-align' tweak, allowing it to work in the header line."
   (let* ((rest (cdr (memq 'al:header-line-format-right-align
@@ -275,6 +288,8 @@
         " "
         al:mode-line-project
         :eval 'al:header-line-format-right-align
+        al:mode-line-flycheck
+        " "
         al:mode-line-major-mode
         al:mode-line-eglot
         "   "
@@ -385,6 +400,10 @@
   (add-hook hook #'eglot-ensure))
 
 (add-to-list 'auto-mode-alist '("\\.php\\'" . php-ts-mode))
+
+(add-hook 'eglot-managed-mode-hook (lambda ()
+                                     (flymake-mode -1)
+                                     (flycheck-mode 1)))
 
 (add-hook 'eglot-managed-mode-hook (lambda ()
 				     (keymap-local-set "C-c l a" #'eglot-code-actions)))
