@@ -3,5 +3,5 @@
 Works For Me™
 
 ```bash
-curl https://github.com/sugol-a/bootstrap.sh | bash
+curl https://raw.githubusercontent.com/sugol-a/coremacs/refs/heads/master/bootstrap.sh | bash
 ```
