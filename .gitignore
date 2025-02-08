@@ -1,0 +1,8 @@
+*
+!.gitignore
+!coremacs
+!coremacs/*.el
+!init.el
+!early-init.el
+!README.md
+!bootstrap.sh
