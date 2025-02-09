@@ -4,6 +4,9 @@
              '(drag-with-header-line . t))
 
 (add-to-list 'default-frame-alist
+             '(drag-internal-border . t))
+
+(add-to-list 'default-frame-alist
              '(undecorated . t))
 
 (add-to-list 'default-frame-alist '(internal-border-width . 6))
