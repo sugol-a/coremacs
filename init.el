@@ -214,6 +214,24 @@
                                   (when (fboundp 'company-mode)
                                     (company-mode))))
 
+(use-package org
+  :ensure nil
+  :config
+  (setq org-hide-emphasis-markers t
+        org-startup-folded 'fold)
+
+  (when (boundp 'al:private:org-agenda-files)
+    (setq org-agenda-files al:private:org-agenda-files)))
+
+(use-package org-appear
+  :ensure (:host "github.com" :repo "awth13/org-appear" :branch "org-9.7-fixes")
+  :hook (org-mode . org-appear-mode))
+
+(use-package org-fragtog
+  :defer t
+  :commands (org-fragtog-mode)
+  :hook (org-mode . org-fragtog-mode))
+
 ;; EDIT
 ;; ============================================================
 (defun beginning-of-line-or-text ()
