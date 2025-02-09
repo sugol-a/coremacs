@@ -1,5 +1,9 @@
 (require 'coremacs)
 
+(let ((private-file (expand-file-name "private.el" user-emacs-directory)))
+  (when (file-exists-p private-file)
+    (load-file private-file)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (setq custom-file null-device
       backup-directory-alist `(("." . ,(expand-file-name (concat user-emacs-directory "backup"))))
