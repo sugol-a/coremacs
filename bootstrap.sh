@@ -24,6 +24,8 @@ maybe_backup_emacs_user_dir() {
 require git
 require emacs
 
+maybe_backup_emacs_user_dir
+
 set +xe
 git clone https://github.com/sugol-a/coremacs.git "$HOME/.emacs.d"
 emacs&
