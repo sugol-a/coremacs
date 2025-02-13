@@ -345,7 +345,7 @@
   ("M-o" . other-window)
   ("C-a" . beginning-of-line-or-text)
   ("C-c h f" . toggle-frame-fullscreen)
-  ("C-," . toggle-popup-ansi-term)
+  ("C-," . popup-term-toggle)
   (:map prog-mode-map
         ("M-RET" . continue-multiline-comment)
         ("C-M-;" . insert-doc-comment))
@@ -355,6 +355,10 @@
 
   (setq-default c-ts-mode-indent-offset 4)
   (setq-default c-ts-mode-indent-style 'bsd)
+
+  ;; Needed for popup-term to act in a sane way (ie. don't spawn the
+  ;; window beneath side-windows on the left or right of the frame)
+  (setq window-sides-vertical t)
 
   (electric-pair-mode 1)
   (electric-indent-mode 1)
@@ -409,34 +413,55 @@
                   display-buffer-in-side-window)
                  (side            . bottom)
                  (reusable-frames . visible)
-                 (window-width   . 0.2))))
+                 (window-width   . 0.2)))
 
-(defun popup-ansi-term ()
-  "Pops up an `ansi-term' at the bottom of the current frame."
+  (add-hook 'popup-term-setup-hook (lambda ()
+                                     (term-set-escape-char ?\C-x)
+                                     (set-window-fringes nil 0 0)
+                                     (hl-line-mode -1)))
+
+  (put 'narrow-to-region 'disabled nil))
+
+(defvar popup-term-buffer-name "terminal"
+  "Name of the buffer to use for the popup terminal")
+
+(defvar popup-term-shell (getenv "SHELL")
+  "Shell to use when opening a popup terminal")
+
+(defvar popup-term-setup-hook nil
+  "Hooks to run when setting up a popup terminal")
+
+(defun popup-term ()
+  "Displays or switches to a popup terminal running `popup-term-shell'."
   (interactive)
-  (if-let* ((ansi-term-buffer (get-buffer "*ansi-term*"))
-            (ansi-term-window (get-buffer-window ansi-term-buffer)))
-      (select-window ansi-term-window)
-    (let ((window (split-window (frame-root-window) -10 'below nil)))
-      (select-window window)
+  (let ((term-buffer-name (format "*%s*" popup-term-buffer-name)))
+    (if-let* ((term-buffer (get-buffer term-buffer-name))
+              (term-window (get-buffer-window term-buffer)))
+        (select-window term-window)
+      (let* ((term-buffer (get-buffer-create term-buffer-name))
+             (term-window (display-buffer-in-side-window term-buffer '((side . bottom) (dedicated . t) (window-parameters . ((no-delete-other-windows . t) (no-other-window . t)))))))
+        (with-current-buffer term-buffer
+          (make-term popup-term-buffer-name popup-term-shell)
+          (term-char-mode)
+          (run-hooks 'popup-term-setup-hook))
+        (window-preserve-size term-window)
+        (select-window term-window)))))
 
-      (if-let* ((ansi-term-buffer (get-buffer "*ansi-term*")))
-          (set-window-buffer window ansi-term-buffer)
-        (ansi-term (getenv "SHELL")))
-      (set-window-dedicated-p window t))))
-
-(defun unpopup-ansi-term ()
-  "Hides the popup `ansi-term'."
+(defun popup-term-hide ()
+  "Hides the popup terminal, if it is visible."
   (interactive)
-  (delete-window (get-buffer-window (get-buffer "*ansi-term*"))))
+  (when-let* ((term-window (get-buffer-window (get-buffer (format "*%s*" popup-term-buffer-name)))))
+    (delete-window term-window)))
 
-(defun toggle-popup-ansi-term ()
-  "Toggles a popup `ansi-term'."
+(defun popup-term-toggle ()
+  "Toggles the popup terminal."
   (interactive)
-  (if-let* ((buffer (get-buffer "*ansi-term*"))
+  (if-let* ((buffer (get-buffer (format "*%s*" popup-term-buffer-name)))
             (window (get-buffer-window buffer)))
-      (unpopup-ansi-term)
-    (popup-ansi-term)))
+      (if (eq window (selected-window))
+          (popup-term-hide)
+        (popup-term))
+    (popup-term)))
 
 (defun c-mode-setup ()
   (c-set-style "bsd")
