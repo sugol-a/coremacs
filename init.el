@@ -255,6 +255,22 @@
   :commands (org-fragtog-mode)
   :hook (org-mode . org-fragtog-mode))
 
+(defun al:svg-tags-prog-mode ()
+  (setq-local svg-tag-tags `(("\\W\\(TODO\\):?\\W" (lambda (_) (svg-tag-make "TODO" :face 'warning :inverse t)))
+                             ("\\W\\(FIXME\\):?\\W" (lambda (_) (svg-tag-make "FIXME" :face 'error :inverse t)))))
+  (svg-tag-mode 1))
+
+(defun al:svg-tags-org-mode ()
+  (setq-local svg-tag-tags `((":[a-zA-Z0-9-]+:" (lambda (item) (svg-tag-make (substring item 1 -1) :face 'org-document-info)))))
+  (svg-tag-mode 1))
+
+(use-package svg-tag-mode
+  :defer t
+  :after (catppuccin-theme)
+  :hook
+  (prog-mode . al:svg-tags-prog-mode)
+  (org-mode . al:svg-tags-org-mode))
+
 ;; EDIT
 ;; ============================================================
 (defun beginning-of-line-or-text ()
