@@ -63,6 +63,24 @@
   :hook (prog-mode-hook . eldoc-mode)
   :bind ("C-c C-/" . eldoc))
 
+(use-package treemacs
+  :defer t
+  :commands (treemacs)
+  :bind ("C-c o p" . treemacs-select-window)
+  :hook (treemacs-mode . treemacs-project-follow-mode)
+  :config
+  (setq treemacs-user-mode-line-format 'none
+        treemacs-header-line-format 'none
+        treemacs-is-never-other-window t)
+  (set-face-attribute 'treemacs-window-background-face nil :background (catppuccin-color 'mantle))
+  (set-face-attribute 'treemacs-hl-line-face nil :background (catppuccin-color 'crust)))
+
+(use-package all-the-icons)
+(use-package treemacs-all-the-icons
+  :after (all-the-icons treemacs)
+  :config
+  (treemacs-load-theme "all-the-icons"))
+
 (use-package catppuccin-theme
   :ensure t
   :config
