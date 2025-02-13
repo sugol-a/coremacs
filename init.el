@@ -240,7 +240,8 @@
   :ensure nil
   :config
   (setq org-hide-emphasis-markers t
-        org-startup-folded 'fold)
+        org-startup-folded 'fold
+        org-hide-leading-stars t)
 
   (when (boundp 'al:private:org-agenda-files)
     (setq org-agenda-files al:private:org-agenda-files)))
