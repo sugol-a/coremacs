@@ -364,6 +364,8 @@
   (electric-indent-mode 1)
   (global-subword-mode 1)
   (global-hl-line-mode 1)
+  (pixel-scroll-mode 1)
+  (pixel-scroll-precision-mode 1)
 
   ;; Show dividers betweeen windows for better visual separation
   (setq-default window-divider-default-places t
