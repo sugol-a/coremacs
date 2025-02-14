@@ -366,6 +366,8 @@
   (global-hl-line-mode 1)
   (pixel-scroll-mode 1)
   (pixel-scroll-precision-mode 1)
+  (setq-default frame-resize-pixelwise t
+                window-resize-pixelwise t)
 
   ;; Show dividers betweeen windows for better visual separation
   (setq-default window-divider-default-places t
