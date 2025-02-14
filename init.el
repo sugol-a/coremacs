@@ -87,9 +87,9 @@
   (setq catppuccin-flavor 'mocha)
   (load-theme 'catppuccin t))
 
-(use-package solaire-mode
-  :config
-  (solaire-global-mode))
+;; (use-package solaire-mode
+;;   :config
+;;   (solaire-global-mode))
 
 (use-package company
   :hook (eglot-managed-mode-hook . company-mode)
