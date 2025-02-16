@@ -34,6 +34,10 @@
 
 (use-package eglot
   :ensure nil
+  :bind
+  (:map eglot-mode-map
+        ("C-c l r" . #'eglot-rename)
+        ("C-c l a" . #'eglot-code-actions))
   :config
   ;; point eglot to intelephense for php
   (add-to-list 'eglot-server-programs
@@ -53,10 +57,7 @@
   ;; Don't ever use flymake. Prefer flycheck
   (add-hook 'eglot-managed-mode-hook (lambda ()
                                        (flymake-mode -1)
-                                       (flycheck-mode 1)))
-
-  (add-hook 'eglot-managed-mode-hook (lambda ()
-				       (keymap-local-set "C-c l a" #'eglot-code-actions))))
+                                       (flycheck-mode 1))))
 
 (use-package eldoc
   :ensure nil
@@ -87,10 +88,6 @@
   (setq catppuccin-flavor 'mocha)
   (load-theme 'catppuccin t))
 
-;; (use-package solaire-mode
-;;   :config
-;;   (solaire-global-mode))
-
 (use-package company
   :hook (eglot-managed-mode-hook . company-mode)
   :config
@@ -104,26 +101,6 @@
 
 (use-package vertico
   :config (vertico-mode))
-
-;; (defun al:posframe-size-function (buffer)
-;;   (let ((window (get-buffer-window buffer)))
-;;     (list
-;;      :height (buffer-local-value 'vertico-posframe-height buffer)
-;;      :min-height (or (buffer-local-value 'vertico-posframe-min-height buffer)
-;;                    (let ((height (+ vertico-count 1)))
-;;                      (min height (or (buffer-local-value 'vertico-posframe-height buffer) height))))
-;;      :max-width (min 500 (window-size window t t)))))
-
-;; (use-package vertico-posframe
-;;   :after (catppuccin-theme)
-;;   :ensure (:host "github.com" :repo "tumashu/vertico-posframe" :ref "cfce055")
-;;   :config
-;;   (vertico-posframe-mode 1)
-;;   (setq vertico-posframe-border-width 1
-;;         vertico-posframe-poshandler #'posframe-poshandler-window-center
-;;         vertico-posframe-size-function #'al:posframe-size-function)
-;;   (set-face-attribute 'vertico-posframe-border nil
-;;                       :background (catppuccin-color 'lavender)))
 
 (use-package orderless
   :config
