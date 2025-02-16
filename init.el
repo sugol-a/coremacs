@@ -376,6 +376,19 @@
                       :foreground (catppuccin-color 'base)
                       :background (catppuccin-color 'sky))
 
+  (require 'tab-line)
+
+  (set-face-attribute 'tab-line nil
+                      :background (catppuccin-color 'mantle))
+  (set-face-attribute 'tab-line-tab-inactive nil
+                      :background (catppuccin-color 'mantle))
+  (set-face-attribute 'tab-line-tab nil
+                      :foreground (catppuccin-color 'sky)
+                      :background (catppuccin-color 'base))
+
+  (set-face-attribute 'tab-line-tab-special nil
+                      :slant 'normal)
+
   (setq-default display-line-numbers-width 4)
   (fset #'yes-or-no-p #'y-or-n-p)
 
@@ -395,13 +408,67 @@
                  (side            . bottom)
                  (reusable-frames . visible)
                  (window-width   . 0.2)))
-
+  
   (add-hook 'popup-term-setup-hook (lambda ()
                                      (term-set-escape-char ?\C-x)
                                      (set-window-fringes nil 0 0)
-                                     (hl-line-mode -1)))
+                                     (setq-local header-line-format nil)))
 
   (put 'narrow-to-region 'disabled nil))
+
+(require 'term)
+
+(defun popup-term-buffer-list ()
+  (sort
+   (seq-filter (lambda (buffer)
+                 (string-match (format " \\*%s\\( [0-9]+\\)?\\*" popup-term-buffer-name) (buffer-name buffer)))
+               (buffer-list))
+   :key #'buffer-name))
+
+(defun popup-term-make-new-term (&optional index)
+  (let ((buffer (cond
+                 ((and (eq nil index)
+                       (get-buffer (format " *%s*" popup-term-buffer-name)))
+                  (popup-term-make-new-term 1))
+                 ((eq nil index)
+                  (get-buffer-create (format " *%s*" popup-term-buffer-name)))
+                 ((eq nil (get-buffer (format " *%s %d*" popup-term-buffer-name index)))
+                  (get-buffer-create (format " *%s %d*" popup-term-buffer-name index)))
+                 (t
+                  (popup-term-make-new-term (+ 1 index))))))
+    (with-current-buffer buffer
+      (let ((proc-name (substring (buffer-name) 2 -1)))
+        (cond ((not (term-check-proc buffer))
+	       (term-mode)
+	       (term-exec buffer proc-name popup-term-shell nil nil)
+               (term-char-mode)
+               (popup-term-setup-tabs)
+               (run-hooks 'popup-term-setup-hook)))
+        buffer))))
+
+(defun popup-term-new-tab ()
+  (interactive)
+  (switch-to-buffer (popup-term-make-new-term)))
+
+(defun popup-term-tab-name (buffer &optional tabs)
+  (let ((buffer-name (buffer-name buffer)))
+    (if (eq nil (string-match (format " \\*%s\\( [0-9]+\\)" popup-term-buffer-name) buffer-name))
+        "[0] \xf120 "
+      (format "[%s] \xf120 " (string-trim (match-string 1 buffer-name))))))
+
+(defun popup-term-setup-tabs ()
+  (when popup-term-tab-line-enabled
+    (tab-line-mode 1)
+    (setq-local header-line-format nil
+                tab-line-tabs-function #'popup-term-buffer-list
+                tab-line-new-button-functions '(popup-term-buffer-list)
+                tab-line-close-tab-function #'kill-buffer
+                tab-line-tab-name-function #'popup-term-tab-name)
+    (define-key tab-line-add-map (kbd "<tab-line> <down-mouse-1>") #'popup-term-new-tab)
+    (define-key tab-line-add-map (kbd "<tab-line> <down-mouse-2>") #'popup-term-new-tab)))
+
+(defvar popup-term-tab-line-enabled t
+  "Whether to enable the tab line.")
 
 (defvar popup-term-buffer-name "terminal"
   "Name of the buffer to use for the popup terminal")
@@ -412,37 +479,47 @@
 (defvar popup-term-setup-hook nil
   "Hooks to run when setting up a popup terminal")
 
+(defun popup-term-get-term-buffer ()
+  (car (seq-filter #'popup-term-is-term-buffer-p (buffer-list))))
+
+(defun popup-term-display-buffer (buffer)
+  (display-buffer-in-side-window term-buffer
+                                 '((side . bottom)
+                                   (window-parameters . ((no-delete-other-windows . t)
+                                                         (no-other-window . t))))))
+
 (defun popup-term ()
   "Displays or switches to a popup terminal running `popup-term-shell'."
   (interactive)
-  (let ((term-buffer-name (format "*%s*" popup-term-buffer-name)))
-    (if-let* ((term-buffer (get-buffer term-buffer-name))
-              (term-window (get-buffer-window term-buffer)))
-        (select-window term-window)
-      (let* ((term-buffer (get-buffer-create term-buffer-name))
-             (term-window (display-buffer-in-side-window term-buffer '((side . bottom) (dedicated . t) (window-parameters . ((no-delete-other-windows . t) (no-other-window . t)))))))
-        (with-current-buffer term-buffer
-          (make-term popup-term-buffer-name popup-term-shell)
-          (term-char-mode)
-          (run-hooks 'popup-term-setup-hook))
-        (window-preserve-size term-window)
-        (select-window term-window)))))
+  (if-let* ((term-buffer (popup-term-get-term-buffer)))
+      (let ((term-window (get-buffer-window term-buffer)))
+        (select-window (or term-window (popup-term-display-buffer term-buffer)))
+        (popup-term-setup-tabs))
+    (let ((term-buffer (popup-term-make-new-term)))
+      (select-window (popup-term-display-buffer term-buffer))
+      (popup-term-setup-tabs))))
+
+(defun popup-term-is-term-buffer-p (&optional buffer)
+  (not (eq nil (string-match-p (format " \\*%s\\( [0-9]+\\)?" popup-term-buffer-name)
+                               (buffer-name buffer)))))
 
 (defun popup-term-hide ()
   "Hides the popup terminal, if it is visible."
   (interactive)
-  (when-let* ((term-window (get-buffer-window (get-buffer (format "*%s*" popup-term-buffer-name)))))
-    (delete-window term-window)))
+  (when-let* ((term-buffers (seq-filter #'popup-term-is-term-buffer-p (buffer-list)))
+              (term-windows (seq-filter (lambda (window)
+                                          (not (eq nil window)))
+                                        (mapcar (lambda (buffer) (get-buffer-window buffer)) term-buffers))))
+    (when (< 0 (length term-windows))
+      (delete-window (car term-windows)))))
 
 (defun popup-term-toggle ()
   "Toggles the popup terminal."
   (interactive)
-  (if-let* ((buffer (get-buffer (format "*%s*" popup-term-buffer-name)))
-            (window (get-buffer-window buffer)))
-      (if (eq window (selected-window))
-          (popup-term-hide)
-        (popup-term))
-    (popup-term)))
+  (let ((current-window-buffer (window-buffer (selected-window))))
+    (if (popup-term-is-term-buffer-p current-window-buffer)
+        (popup-term-hide)
+      (popup-term))))
 
 (defun c-mode-setup ()
   (c-set-style "bsd")
