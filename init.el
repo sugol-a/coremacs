@@ -42,6 +42,16 @@
   ;; point eglot to intelephense for php
   (add-to-list 'eglot-server-programs
                '((php-ts-mode :language-id "php") . ("intelephense" "--stdio" :initializationOptions)))
+
+  (when-let* ((vacuum-executable (executable-find "vacuum"))
+              (vacuum-version-str (shell-command-to-string (string-join (list vacuum-executable "version") " ")))
+              (vacuum-version (string-split (string-trim vacuum-version-str) "\\."))
+              (vacuum-major (string-to-number (nth 0 vacuum-version)))
+              (vacuum-minor (string-to-number (nth 1 vacuum-version))))
+    (when (and (>= vacuum-major 0)
+               (>= vacuum-minor 16))
+      (add-to-list 'eglot-server-programs
+                   `((yaml-ts-mode :language-id "yaml") . (,vacuum-executable "language-server")))))
   
   ;; Automatically enable eglot for common langs
   (dolist (hook '(jtsx-tsx-mode-hook
