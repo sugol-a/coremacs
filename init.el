@@ -85,7 +85,9 @@
 (use-package catppuccin-theme
   :ensure t
   :config
-  (setq catppuccin-flavor 'mocha)
+  (setq catppuccin-flavor (if (eq 'light (al:ui/get-current-color-scheme))
+                              'latte
+                            'mocha))
   (load-theme 'catppuccin t))
 
 (use-package company
@@ -415,6 +417,49 @@
                                      (setq-local header-line-format nil)))
 
   (put 'narrow-to-region 'disabled nil))
+
+(require 'dbus)
+
+(defvar al:ui/color-scheme-change-hook '())
+
+(defun al:ui/get-current-color-scheme ()
+  (let ((color-scheme (caar (dbus-call-method
+                             :session
+                             "org.freedesktop.portal.Desktop"
+                             "/org/freedesktop/portal/desktop"
+                             "org.freedesktop.portal.Settings"
+                             "Read"
+                             "org.freedesktop.appearance"
+                             "color-scheme"))))
+    (cond
+     ((equal color-scheme 0) 'light)
+     ((equal color-scheme 1) 'dark)
+     (t 'unknown))))
+
+(defun al:--ui-on-system-color-scheme-change (path key value)
+  (when (and (string= path "org.freedesktop.appearance")
+             (string= key "color-scheme"))
+    (let* ((scheme-id (car value))
+           (color-scheme (cond
+                          ((equal scheme-id 0) 'light)
+                          ((equal scheme-id 1) 'dark)
+                          (t 'unknown))))
+      (dolist (hook al:ui/color-scheme-change-hook)
+        (funcall hook color-scheme)))))
+
+(dbus-register-signal :session
+                      "org.freedesktop.portal.Desktop"
+                      "/org/freedesktop/portal/desktop"
+                      "org.freedesktop.portal.Settings"
+                      "SettingChanged"
+                      #'al:--ui-on-system-color-scheme-change)
+
+(defun al:change-theme (color-scheme)
+  (if (eq color-scheme 'light)
+      (catppuccin-load-flavor 'latte)
+    (catppuccin-load-flavor 'mocha)))
+
+(add-hook 'al:ui/color-scheme-change-hook #'al:change-theme)
 
 (require 'term)
 
