@@ -122,12 +122,15 @@
 
 (use-package treesit
   :ensure nil
-  :mode ("\\.php\\'" . php-ts-mode))
+  :mode (("\\.php\\'" . php-ts-mode)
+         ("\\.ya?ml\\'" . yaml-ts-mode)))
 
 (use-package treesit-auto
   :config
   (setq treesit-auto-install 'prompt)
   (global-treesit-auto-mode))
+
+(add-hook 'yaml-ts-mode-hook (lambda () (setq-local tab-width 2)))
 
 (use-package jtsx
   :defer t
