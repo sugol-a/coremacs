@@ -152,6 +152,9 @@
 (use-package rust-mode
   :ensure t)
 
+(use-package terraform-mode
+  :defer t)
+
 (use-package expand-region
   :ensure t
   :bind ("C-=" . er/expand-region))
