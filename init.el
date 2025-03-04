@@ -256,6 +256,11 @@
   (prog-mode . al:svg-tags-prog-mode)
   (org-mode . al:svg-tags-org-mode))
 
+(use-package jwt
+  :defer t
+  :ensure (:host "github.com" :repo "sugol-a/jwt.el")
+  :commands (jwt-console))
+
 ;; EDIT
 ;; ============================================================
 (defun beginning-of-line-or-text ()
