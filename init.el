@@ -335,6 +335,56 @@
 ;; EMACS
 ;; ============================================================
 
+(defun al/move-thing-up (arg)
+  (interactive "p")
+  (if (use-region-p)
+      (unless (or (= (point) 1) (= (mark) 1))
+        (al/move-region #'previous-line arg))
+    (unless (= (point) 1)
+        (al/move-line-up arg))))
+
+(defun al/move-thing-down (arg)
+  (interactive "p")
+  (if (use-region-p)
+      (al/move-region #'next-line arg)
+    (al/move-line-down arg)))
+
+(defun al/move-line-up (arg)
+  (interactive "p")
+  (dotimes (i arg)
+    (transpose-subr #'forward-line 1)
+    (previous-line 2)))
+
+(defun al/move-line-down (arg)
+  (interactive "p")
+  (dotimes (i arg)
+    (next-line)
+    (transpose-subr #'forward-line 1)
+    (previous-line)))
+
+(defun al/move-region (move arg)
+  (dotimes (i arg)
+    (let* ((point (point))
+           (mark (mark))
+           (region-begin (if (> point mark) mark point))
+           (region-end (if (> point mark) point mark))
+           (block-begin (save-excursion
+                          (goto-char region-begin)
+                          (beginning-of-line)
+                          (point)))
+           (block-end (save-excursion
+                        (goto-char region-end)
+                        (point)))
+           (content (buffer-substring block-begin block-end)))
+      (delete-region block-begin block-end)
+      (let ((next-line-add-newlines t))
+        (funcall move))
+      (save-excursion
+        (insert content))
+      (setq deactivate-mark nil)
+      (set-mark (point))
+      (goto-char (+ (point) (abs (- point mark)))))))
+
 (use-package emacs
   :ensure nil
   :after (catppuccin-theme)
@@ -344,6 +394,8 @@
   ("M-3" . split-window-right)
   ("M-0" . delete-window)
   ("M-o" . other-window)
+  ("M-n" . al/move-thing-down)
+  ("M-p" . al/move-thing-up)
   ("C-a" . beginning-of-line-or-text)
   ("C-c h f" . toggle-frame-fullscreen)
   ("C-," . popup-term-toggle)
