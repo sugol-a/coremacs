@@ -61,7 +61,8 @@
                   c-ts-mode-hook
                   c++-ts-mode-hook
                   rust-ts-mode-hook
-                  php-ts-mode-hook))
+                  php-ts-mode-hook
+                  python-ts-mode))
     (add-hook hook #'eglot-ensure))
 
   ;; Don't ever use flymake. Prefer flycheck
