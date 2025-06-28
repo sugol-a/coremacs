@@ -140,6 +140,11 @@
   :mode (("\\.php\\'" . php-ts-mode)
          ("\\.ya?ml\\'" . yaml-ts-mode)))
 
+(use-package web-mode
+  :defer t
+  :commands (web-mode)
+  :mode (("\\.blade\\.php\\'" . web-mode)))
+
 (use-package treesit-auto
   :config
   (setq treesit-auto-install 'prompt)
