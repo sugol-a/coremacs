@@ -612,7 +612,7 @@
   (car (seq-filter #'popup-term-is-term-buffer-p (buffer-list))))
 
 (defun popup-term-display-buffer (buffer)
-  (display-buffer-in-side-window term-buffer
+  (display-buffer-in-side-window buffer
                                  '((side . bottom)
                                    (window-parameters . ((no-delete-other-windows . t)
                                                          (no-other-window . t))))))
