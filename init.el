@@ -32,8 +32,12 @@
 ;; PACKAGES
 ;; ============================================================
 
+(use-package jsonrpc
+  :ensure nil)
+
 (use-package eglot
   :ensure nil
+  :after jsonrpc
   :bind
   (:map eglot-mode-map
         ("C-c l r" . #'eglot-rename)
