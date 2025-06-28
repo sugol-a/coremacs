@@ -224,7 +224,8 @@
   :defer t
   :bind
   ("C-c m l" . #'mc/edit-lines)
-  ("C-c m ;" . #'mc/mark-next-like-this))
+  ("C-c m ;" . #'mc/mark-next-like-this)
+  ("C-<down-mouse-1>" . #'mc/add-cursor-on-click))
 
 (add-to-list 'auto-mode-alist '("\\.journal\\'" . hledger-mode))
 
