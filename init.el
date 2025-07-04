@@ -35,6 +35,36 @@
 (use-package jsonrpc
   :ensure nil)
 
+(use-package dape
+  :defer t
+  :commands (dape)
+  :config
+  (add-to-list 'dape-configs `(xdebug
+     modes (php-mode php-ts-mode)
+     ensure (lambda (config)
+              (dape-ensure-command config)
+              (let ((dap-debug-server-path
+                     (car (plist-get config 'command-args))))
+                (unless (file-exists-p dap-debug-server-path)
+                  (user-error "File %S does not exist" dap-debug-server-path))))
+     prefix-remote "/var/www/html/"
+     fn (lambda (config)
+	  (thread-first
+	    config
+	    (plist-put 'prefix-local (expand-file-name
+                                      (project-root
+                                       (project-current))))))
+     command "node"
+     command-args (,(expand-file-name
+                     (file-name-concat dape-adapter-dir
+                                       "php-debug"
+                                       "extension"
+                                       "out"
+                                       "phpDebug.js")))
+     :type "php"
+     :request "launch"
+     :port 9003)))
+
 (use-package eglot
   :ensure nil
   :after jsonrpc
