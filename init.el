@@ -312,6 +312,9 @@
   :ensure (:host "github.com" :repo "sugol-a/jwt.el")
   :commands (jwt-console))
 
+(use-package meson-mode
+  :defer t)
+
 ;; EDIT
 ;; ============================================================
 (defun beginning-of-line-or-text ()
