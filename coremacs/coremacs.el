@@ -148,7 +148,7 @@
   "Displays the active project and git branch for the current buffer")
 
 (defface core:mode-line-major-mode
-  '((t . (:inherit mode-line-emphasis)))
+  '((t . (:inherit mode-line)))
   "Face for mode line major mode")
 
 (defvar-local core:mode-line-major-mode
@@ -225,26 +225,25 @@
            '(:eval (propertize
                     (core:-window-symbol-for 'minimize)
                     'local-map core:mode-line-window-controls-minimize-map
+                    'mouse-face 'highlight
                     'face 'core:mode-line-window-controls-active))
-           " "
            '(:eval (propertize
                     (core:-window-symbol-for 'maximize)
                     'local-map core:mode-line-window-controls-maximize-map
+                    'mouse-face 'highlight
                     'face 'core:mode-line-window-controls-active))
-           " "
            '(:eval (propertize
                     (core:-window-symbol-for 'close)
                     'local-map core:mode-line-window-controls-close-map
+                    'mouse-face 'highlight
                     'face 'core:mode-line-window-controls-active)))
         (list
          '(:eval (propertize
                   (core:-window-symbol-for 'minimize)
                   'face `(:inherit core:mode-line-window-controls-active :foreground ,(face-attribute 'mode-line :background))))
-           " "
            '(:eval (propertize
                     (core:-window-symbol-for 'maximize)
                     'face `(:inherit core:mode-line-window-controls-active :foreground ,(face-attribute 'mode-line :background))))
-           " "
            '(:eval (propertize
                     (core:-window-symbol-for 'close)
                     'face `(:inherit core:mode-line-window-controls-active :foreground ,(face-attribute 'mode-line :background))))))))

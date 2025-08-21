@@ -10,24 +10,58 @@
       scroll-conservatively 101
       enable-recursive-minibuffers t)
 
+(use-package all-the-icons)
+
+(defun al:toggle-eglot ()
+  (interactive)
+  (message "fuck")
+  (if (bound-and-true-p eglot--managed-mode)
+      (call-interactively #'eglot-shutdown (eglot-current-server))
+    (call-interactively #'eglot)))
+
+(defun al:mode-line-eglot-mouse-map ()
+  (let ((map (make-sparse-keymap)))
+    (define-key map [header-line mouse-1] #'al:toggle-eglot)
+    map))
+
 (defvar-local al:mode-line-eglot
-    '(:eval (when (bound-and-true-p eglot--managed-mode) "*")))
+    '(:eval (when-let* ((icon (all-the-icons-icon-for-buffer)))
+              (let ((face (if (bound-and-true-p eglot--managed-mode)
+                              `(:family ,(all-the-icons-alltheicon-family)
+                                :height 1.0
+                                :background ,(catppuccin-color 'base)
+                                :foreground ,(catppuccin-color 'sky))
+                            `(:family ,(all-the-icons-alltheicon-family)
+                              :background ,(catppuccin-color 'base)
+                              :height 1.0
+                              :foreground ,(catppuccin-color 'overlay0)))))
+                (propertize (concat " " icon " ") 'display '(raise 0.1) 'mouse-face 'highlight 'face face 'keymap (al:mode-line-eglot-mouse-map))))))
 
 (setq-default core:font "Red Hat Mono 13"
               core:mode-line-position 'top
-              core:mode-line-format (list core:mode-line-buffer-status
+              core:mode-line-buffer-status-token-read-only "\xf444"
+              core:mode-line-buffer-status-token-modified "\xf444"
+              core:mode-line-buffer-status-token-read-write "\xf444"
+              ;; core:mode-line-window-controls-symbols-alist '((close . "\xf05ad ") (minimize . "\xf05b0 ") (maximize . "\xf05af "))
+              core:mode-line-window-controls-symbols-alist '((minimize . " \xeaba ") (maximize . " \xeab9 ") (close . " \xeab8 "))
+              core:mode-line-format (list al:mode-line-eglot
                                           " "
-                                          mode-line-buffer-identification
+                                          '(:eval (string-trim (buffer-name)))
+                                          " "
+                                          '(:eval (when (string= (buffer-name) (string-trim-left (buffer-name))) core:mode-line-buffer-status))
                                           " "
                                           core:mode-line-project
                                           " "
-                                          :eval 'core:mode-line-format-right-align
+                                          'core:mode-line-format-right-align
                                           " "
-                                          core:mode-line-major-mode
-                                          al:mode-line-eglot
-                                          "  "
+                                          ;; core:mode-line-major-mode
+                                          ;; al:mode-line-eglot
+                                          "    "
                                           core:mode-line-window-controls
                                           " "))
+
+(set-face-font 'core:mode-line-window-controls-active "RobotoMono Nerd Font 13")
+(set-face-attribute 'mode-line nil :underline)
 
 ;; PACKAGES
 ;; ============================================================
@@ -171,7 +205,6 @@
             (lambda ()
               (indent-tabs-mode 1))))
 
-(use-package all-the-icons)
 (use-package treemacs-all-the-icons
   :after (all-the-icons treemacs)
   :config
@@ -525,25 +558,28 @@
                       :foreground (catppuccin-color 'mantle))
 
   (set-face-attribute 'window-divider-first-pixel nil
-                      :foreground (catppuccin-color 'surface0))
+                      :foreground (catppuccin-color 'mantle))
 
   (set-face-attribute 'window-divider-last-pixel nil
-                      :foreground (catppuccin-color 'surface0))
+                      :foreground (catppuccin-color 'mantle))
 
   (set-face-attribute 'internal-border nil
                       :background (catppuccin-color 'mantle))
 
   (set-face-attribute 'core:mode-line-buffer-status-read-only nil
-                      :foreground (catppuccin-color 'base)
-                      :background (catppuccin-color 'mauve))
+                      :background (catppuccin-color 'mantle)
+                      :foreground (catppuccin-color 'mauve))
   
   (set-face-attribute 'core:mode-line-buffer-status-modified nil
-                      :foreground (catppuccin-color 'base)
-                      :background (catppuccin-color 'peach))
+                      :background (catppuccin-color 'mantle)
+                      :foreground (catppuccin-color 'peach))
   
   (set-face-attribute 'core:mode-line-buffer-status-read-write nil
-                      :foreground (catppuccin-color 'base)
-                      :background (catppuccin-color 'sky))
+                      :background (catppuccin-color 'mantle)
+                      :foreground (catppuccin-color 'mantle))
+
+  (dolist (face '(core:mode-line-buffer-status-modified core:mode-line-buffer-status-read-only core:mode-line-buffer-status-read-write))
+    (set-face-font face "RobotoMono Nerd Font 13"))
 
   (require 'tab-line)
 
