@@ -82,8 +82,8 @@
   (core:ui:-set-font newval))
 
 (defun core:ui-setup ()
-  (when core:font
-    (core:ui:-set-font core:font))
+  ;; (when core:font
+  ;;   (core:ui:-set-font core:font))
   (add-variable-watcher 'core:font #'core:ui:-font-changed))
 
 ;; ------------------------------------------------------------
