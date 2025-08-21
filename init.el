@@ -13,7 +13,7 @@
 (defvar-local al:mode-line-eglot
     '(:eval (when (bound-and-true-p eglot--managed-mode) "*")))
 
-(setq-default core:font "Red Hat Mono 14"
+(setq-default core:font "Red Hat Mono 13"
               core:mode-line-position 'top
               core:mode-line-format (list core:mode-line-buffer-status
                                           " "
