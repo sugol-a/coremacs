@@ -56,7 +56,7 @@
   "If non-nil, enable dash")
 
 (defun core:dash:default-buffer ()
-  (let ((buffer (get-buffer-create "*coremacs*")))
+  (let ((buffer (get-buffer-create " *coremacs*")))
     (with-current-buffer buffer
       (erase-buffer)
       (insert "\n\n > coremacs\n"))
