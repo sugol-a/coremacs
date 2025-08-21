@@ -138,7 +138,8 @@
                   c++-ts-mode-hook
                   rust-ts-mode-hook
                   php-ts-mode-hook
-                  python-ts-mode))
+                  python-ts-mode
+                  gdscript-mode-hook))
     (add-hook hook #'eglot-ensure))
 
   ;; Don't ever use flymake. Prefer flycheck
@@ -162,6 +163,13 @@
         treemacs-is-never-other-window t)
   (set-face-attribute 'treemacs-window-background-face nil :background (catppuccin-color 'mantle))
   (set-face-attribute 'treemacs-hl-line-face nil :background (catppuccin-color 'crust)))
+
+(use-package gdscript-mode
+  :defer t
+  :config
+  (add-hook 'gdscript-mode-hook
+            (lambda ()
+              (indent-tabs-mode 1))))
 
 (use-package all-the-icons)
 (use-package treemacs-all-the-icons
