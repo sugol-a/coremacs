@@ -111,6 +111,8 @@
   :bind
   (:map eglot-mode-map
         ("C-c l r" . #'eglot-rename)
+        ("C-c l e" . #'eglot)
+        ("C-c l i" . #'eglot-inlay-hints-mode)
         ("C-c l a" . #'eglot-code-actions))
   :config
   ;; point eglot to intelephense for php
