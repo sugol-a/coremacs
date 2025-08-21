@@ -35,6 +35,20 @@
 (use-package jsonrpc
   :ensure nil)
 
+(defun al/dape-config-meson (config)
+  (if-let* ((root (expand-file-name (project-root (project-current))))
+            (build (seq-find
+                    (lambda (dir)
+                      (let ((path (file-name-concat root dir)))
+                        (file-directory-p path)))
+                    '("build-debug" "build")))
+            (builddir (file-name-concat root build))
+            (targets-str (shell-command-to-string (format "meson introspect %s --targets" builddir)))
+            (targets
+             (json-parse-string targets-str :array-type 'list))
+            (executable-target (car (seq-filter (lambda (target) (string= (gethash "type" target) "executable")) targets))))
+      (plist-put config :program (car (gethash "filename" executable-target)))))
+
 (use-package dape
   :defer t
   :commands (dape)
@@ -63,7 +77,33 @@
                                        "phpDebug.js")))
      :type "php"
      :request "launch"
-     :port 9003)))
+     :port 9003))
+
+  (add-to-list 'dape-configs
+               `(gdb-meson ensure
+                     (lambda (config) (dape-ensure-command config)
+	               (let*
+	                   ((default-directory
+	                     (or (dape-config-get config 'command-cwd)
+		                 default-directory))
+	                    (command (dape-config-get config 'command))
+	                    (output
+	                     (shell-command-to-string (format "%s --version" command)))
+	                    (version
+	                     (save-match-data
+		               (when
+		                   (string-match
+		                    "GNU gdb \\(?:(.*) \\)?\\([0-9.]+\\)" output)
+		                 (string-to-number (match-string 1 output))))))
+	                 (unless (>= version 14.1)
+	                   (user-error "Requires gdb version >= 14.1"))))
+                     modes (c-mode c-ts-mode c++-mode c++-ts-mode)
+                     command-cwd dape-command-cwd command "gdb"
+                     command-args ("--interpreter=dap")
+                     fn (al/dape-config-meson)
+                     :request "launch"
+                     :args []
+                     :stopAtBeginningOfMainSubprogram nil)))
 
 (use-package eglot
   :ensure nil
