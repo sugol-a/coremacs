@@ -11,6 +11,6 @@
 
 (add-to-list 'default-frame-alist '(internal-border-width . 6))
 
-(add-to-list 'default-frame-alist '(font . "Red Hat Mono 13"))
+(add-to-list 'default-frame-alist '(font . "Adwaita Mono 13"))
 
 (require 'coremacs-early-init)

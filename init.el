@@ -36,7 +36,7 @@
                               :foreground ,(catppuccin-color 'overlay0)))))
                 (propertize (concat " " icon " ") 'display '(raise 0.1) 'mouse-face 'highlight 'face face 'keymap (al:mode-line-eglot-mouse-map))))))
 
-(setq-default core:font "Red Hat Mono 13"
+(setq-default core:font "Adwaita Mono 13"
               core:mode-line-position 'top
               core:mode-line-buffer-status-token-read-only "\xf444"
               core:mode-line-buffer-status-token-modified "\xf444"
@@ -59,7 +59,7 @@
                                           core:mode-line-window-controls
                                           " "))
 
-(set-face-font 'core:mode-line-window-controls-active "RobotoMono Nerd Font 13")
+(set-face-font 'core:mode-line-window-controls-active "AdwaitaMono Nerd Font 13")
 (set-face-attribute 'mode-line nil :underline)
 
 ;; PACKAGES
@@ -578,7 +578,7 @@
                       :foreground (catppuccin-color 'mantle))
 
   (dolist (face '(core:mode-line-buffer-status-modified core:mode-line-buffer-status-read-only core:mode-line-buffer-status-read-write))
-    (set-face-font face "RobotoMono Nerd Font 13"))
+    (set-face-font face "AdwaitaMono Nerd Font 13"))
 
   (require 'tab-line)
 
