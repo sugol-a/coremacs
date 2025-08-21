@@ -684,15 +684,17 @@
                   (get-buffer-create (format " *%s %d*" popup-term-buffer-name index)))
                  (t
                   (popup-term-make-new-term (+ 1 index))))))
-    (with-current-buffer buffer
-      (let ((proc-name (substring (buffer-name) 2 -1)))
-        (cond ((not (term-check-proc buffer))
-	       (term-mode)
-	       (term-exec buffer proc-name popup-term-shell nil nil)
-               (term-char-mode)
-               (popup-term-setup-tabs)
-               (run-hooks 'popup-term-setup-hook)))
-        buffer))))
+    (let ((proc-name (substring (buffer-name buffer) 2 -1)))
+      (cond ((not (term-check-proc buffer))
+	     (with-current-buffer buffer
+               (term-mode))
+	     (term-exec buffer proc-name popup-term-shell nil '())))
+      (set-buffer buffer)
+      (term-mode)
+      (term-char-mode)
+      (popup-term-setup-tabs)
+      (run-hooks 'popup-term-setup-hook))
+    buffer))
 
 (defun popup-term-new-tab ()
   (interactive)
