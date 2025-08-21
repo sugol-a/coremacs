@@ -14,7 +14,6 @@
 
 (defun al:toggle-eglot ()
   (interactive)
-  (message "fuck")
   (if (bound-and-true-p eglot--managed-mode)
       (call-interactively #'eglot-shutdown (eglot-current-server))
     (call-interactively #'eglot)))
