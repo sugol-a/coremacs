@@ -785,7 +785,11 @@
 
 (defun prog-mode-setup ()
   (display-line-numbers-mode 1)
-  (indent-tabs-mode -1))
+  (indent-tabs-mode -1)
+  (require 'editorconfig)
+  (require 'editorconfig-tools)
+  (editorconfig-mode 1)
+  (editorconfig-apply))
 
 (add-hook 'prog-mode-hook #'prog-mode-setup)
 (add-hook 'c-mode-common-hook #'c-mode-setup)
