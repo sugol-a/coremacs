@@ -36,16 +36,23 @@
                               :foreground ,(catppuccin-color 'overlay0)))))
                 (propertize (concat " " icon " ") 'display '(raise 0.1) 'mouse-face 'highlight 'face face 'keymap (al:mode-line-eglot-mouse-map))))))
 
+(use-package s)
 (setq-default core:font "Adwaita Mono 13"
               core:mode-line-position 'top
               core:mode-line-buffer-status-token-read-only "\xf444"
               core:mode-line-buffer-status-token-modified "\xf444"
               core:mode-line-buffer-status-token-read-write "\xf444"
-              ;; core:mode-line-window-controls-symbols-alist '((close . "\xf05ad ") (minimize . "\xf05b0 ") (maximize . "\xf05af "))
               core:mode-line-window-controls-symbols-alist '((minimize . " \xeaba ") (maximize . " \xeab9 ") (close . " \xeab8 "))
               core:mode-line-format (list al:mode-line-eglot
                                           " "
-                                          '(:eval (string-trim (buffer-name)))
+                                          '(:eval (let ((name (string-trim (buffer-name))))
+                                                    (if-let* ((unwrapped-name (cadr (s-match "\s*\\*\\(.*\\)\\*" name))))
+                                                        (propertize
+                                                         unwrapped-name
+                                                         'face `(:family "Adwaita Sans" :height 0.9 :weight 'bold :foreground ,(catppuccin-color 'sky)))
+                                                      (propertize
+                                                       name
+                                                       'face '(:family "Adwaita Sans" :height 0.9)))))
                                           " "
                                           '(:eval (when (string= (buffer-name) (string-trim-left (buffer-name))) core:mode-line-buffer-status))
                                           " "
