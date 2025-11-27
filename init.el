@@ -643,6 +643,7 @@
     (cond
      ((equal color-scheme 0) 'light)
      ((equal color-scheme 1) 'dark)
+     ((equal color-scheme 2) 'light)
      (t 'unknown))))
 
 (defun al:--ui-on-system-color-scheme-change (path key value)
