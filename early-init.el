@@ -1,18 +1,13 @@
-;; -*- lexical-binding: t; -*-
+;;; early-init.el -*- lexical-binding: t; -*-
 
-(add-to-list 'load-path (expand-file-name "~/.emacs.d/coremacs"))
+(add-to-list 'load-path (expand-file-name "coremacs" user-emacs-directory))
 
-(add-to-list 'default-frame-alist
-             '(drag-with-header-line . t))
-
-(add-to-list 'default-frame-alist
-             '(drag-internal-border . t))
-
-(add-to-list 'default-frame-alist
-             '(undecorated . t))
-
-(add-to-list 'default-frame-alist '(internal-border-width . 6))
-
-(add-to-list 'default-frame-alist '(font . "Adwaita Mono 9"))
+(setq default-frame-alist
+      (append '((undecorated . t)
+                (drag-with-header-line . t)
+                (drag-internal-border . t)
+                (internal-border-width . 6)
+                (font . "Adwaita Mono 9"))
+              default-frame-alist))
 
 (require 'coremacs-early-init)
