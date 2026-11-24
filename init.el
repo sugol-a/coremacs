@@ -214,6 +214,36 @@
                         (concat (propertize " \xe725 " 'face '(al:header-icon shadow))
                                 (propertize (cdr info) 'face 'shadow)))))))
 
+(defvar al:window-focus-style 'both
+  "One of `flash', `header', `both' or nil.")
+
+(defface al:header-focus '((t :inherit al:header-icon))
+  "Selected-window marker in the header line.")
+
+(defface al:header-focus-off '((t :inherit al:header-focus))
+  "Marker slot in unselected windows (invisible, keeps alignment).")
+
+(defface al:header-dim '((t))
+  "Laid over the header of unselected windows.")
+
+(defun al:-header-focus-p ()
+  (memq al:window-focus-style '(header both)))
+
+(defvar-local al:header-focus
+    '(:eval (when (al:-header-focus-p)
+              (propertize "▎" 'face (if (mode-line-window-selected-p)
+                                              'al:header-focus
+                                            'al:header-focus-off)))))
+
+(defun al:header-dimmed (format)
+  "Render FORMAT, dimmed as a whole when this isn't the selected window.
+Dimming the rendered string overrides every segment's own colours, which
+the `header-line-inactive' face alone can't do."
+  (let ((string (format-mode-line format)))
+    (when (and (al:-header-focus-p) (not (mode-line-window-selected-p)))
+      (add-face-text-property 0 (length string) 'al:header-dim nil string))
+    string))
+
 (setq-default core:mode-line-position 'top
               core:mode-line-buffer-status-token-read-only "\xf444"
               core:mode-line-buffer-status-token-modified "\xf444"
@@ -221,14 +251,13 @@
               core:mode-line-window-controls-symbols-alist
               '((minimize . " \xeaba ") (maximize . " \xeab9 ") (close . " \xeab8 "))
               core:mode-line-format
-              (list al:header-eglot
-                    " "
-                    al:header-buffer-name
-                    " "
-                    ;; hidden-buffer terminals (" *terminal*") get no status dot
-                    '(:eval (unless (string-prefix-p " " (buffer-name)) core:mode-line-buffer-status))
-                    "  "
-                    al:header-project
+              (list al:header-focus
+                    `(:eval (al:header-dimmed '(,al:header-eglot " " ,al:header-buffer-name " ")))
+                    ;; not dimmed: the unmodified dot is deliberately invisible.
+                    ;; hidden-buffer terminals (" *terminal*") get no status dot.
+                    '(:eval (unless (string-prefix-p " " (buffer-name))
+                              core:mode-line-buffer-status))
+                    `(:eval (al:header-dimmed '("  " ,al:header-project)))
                     'core:mode-line-format-right-align
                     core:mode-line-flycheck
                     "    "
@@ -592,9 +621,100 @@
 (defun al:pulse-line (&rest _)
   (pulse-momentary-highlight-one-line))
 
-(dolist (command '(other-window recenter-top-bottom consult-line consult-imenu
+(dolist (command '(recenter-top-bottom consult-line consult-imenu
                    consult-goto-line xref-find-definitions xref-go-back))
   (advice-add command :after #'al:pulse-line))
+
+;; WINDOW FOCUS
+;; ============================================================
+;; Two ways of showing which window is selected; try them with
+;; `al:cycle-window-focus-style'.
+;;   flash  - tint the newly selected window in the accent colour, fading out
+;;   header - accent bar in the selected window's header, others dimmed
+
+(defun al:cycle-window-focus-style ()
+  "Cycle `al:window-focus-style' to compare the approaches."
+  (interactive)
+  (setq al:window-focus-style
+        (pcase al:window-focus-style
+          ('both 'flash) ('flash 'header) ('header nil) (_ 'both)))
+  (force-mode-line-update t)
+  (message "Window focus style: %s" al:window-focus-style))
+
+(require 'color)
+
+(defface al:window-flash '((t :extend t))
+  "Starting colour of the selected-window flash (fades to the background).")
+
+(defvar al:window-flash-duration 0.3
+  "Seconds the selected-window flash takes to fade out.")
+
+(defvar al:--flash nil "Current flash: (OVERLAY . TIMER).")
+
+(defun al:-flash-stop ()
+  (when al:--flash
+    (cancel-timer (cdr al:--flash))
+    (delete-overlay (car al:--flash))
+    (setq al:--flash nil)))
+
+(defun al:-flash-window (window)
+  "Tint WINDOW's visible text and fade it back to the background.
+Own overlay rather than `pulse': pulse can't fade from inside a window
+change hook, and its highlight shows in every window on the buffer."
+  (al:-flash-stop)
+  (let* ((overlay (make-overlay (window-start window) (window-end window t)
+                                (window-buffer window)))
+         (steps 12)
+         (colors (let ((from (color-name-to-rgb (face-background 'al:window-flash nil 'default)))
+                       (to (color-name-to-rgb (face-background 'default))))
+                   (mapcar (lambda (c) (apply #'color-rgb-to-hex (append c '(2))))
+                           (append (list from) (color-gradient from to (1- steps)) (list to)))))
+         (step 0))
+    (overlay-put overlay 'window window)   ; only this window, not other views of the buffer
+    (overlay-put overlay 'priority 100)
+    (overlay-put overlay 'face `(:background ,(car colors) :extend t))
+    (setq al:--flash
+          (cons overlay
+                (run-with-timer (/ al:window-flash-duration steps)
+                                (/ al:window-flash-duration steps)
+                                (lambda ()
+                                  (setq step (1+ step))
+                                  (if (>= step (length colors))
+                                      (al:-flash-stop)
+                                    (overlay-put overlay 'face
+                                                 `(:background ,(nth step colors) :extend t)))))))))
+
+(defvar al:--last-selected-window nil)
+
+(defun al:-on-window-selection-change (frame)
+  (let ((window (frame-selected-window frame)))
+    ;; Ignore the minibuffer, so M-x and back doesn't flash.
+    (unless (window-minibuffer-p window)
+      (when (and (memq al:window-focus-style '(flash both))
+                 (window-live-p al:--last-selected-window)
+                 (not (eq window al:--last-selected-window))
+                 (eq frame (selected-frame)))
+        (al:-flash-window window))
+      (setq al:--last-selected-window window))))
+
+(add-hook 'window-selection-change-functions #'al:-on-window-selection-change)
+
+(defun al:window-focus-faces ()
+  (when (custom-theme-enabled-p 'catppuccin)
+    (require 'color)
+    (let ((bg (face-background 'header-line nil 'default)))
+      (set-face-attribute 'al:header-focus nil :foreground (catppuccin-color 'sky))
+      (set-face-attribute 'al:header-focus-off nil :foreground bg)
+      ;; Dim everything in unselected header lines.
+      (set-face-attribute 'al:header-dim nil :foreground (catppuccin-color 'overlay0))
+      (set-face-attribute 'al:window-flash nil
+                          :background (apply #'color-rgb-to-hex
+                                             (append (color-blend (color-name-to-rgb (catppuccin-color 'sky))
+                                                                  (color-name-to-rgb (catppuccin-color 'base))
+                                                                  0.15)
+                                                     '(2)))))))
+
+(add-hook 'core:theme-faces-functions #'al:window-focus-faces)
 
 ;; EDITING
 ;; ============================================================
