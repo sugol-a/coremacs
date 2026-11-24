@@ -19,6 +19,10 @@
       frame-resize-pixelwise t
       window-resize-pixelwise t
       kill-region-dwim 'emacs-word      ; C-w with no region kills the last word
+      ;; *scratch* in fundamental-mode: an elisp *scratch* drags in every
+      ;; prog-mode hook (company, svg-tags, line numbers...) at startup.
+      ;; M-x lisp-interaction-mode when you want it.
+      initial-major-mode 'fundamental-mode
       project-vc-extra-root-markers '("package.json" "tsconfig.json"))
 
 (setq-default indent-tabs-mode nil
@@ -287,6 +291,7 @@ the `header-line-inactive' face alone can't do."
 
 (use-package nerd-icons-completion
   :after marginalia
+  :defer 1
   :config
   (nerd-icons-completion-mode 1)
   (nerd-icons-completion-marginalia-setup))
@@ -314,7 +319,7 @@ the `header-line-inactive' face alone can't do."
 ;; GIT
 ;; ============================================================
 
-(use-package transient)                 ; magit wants a newer one than Emacs ships
+(use-package transient :defer t)        ; magit wants a newer one than Emacs ships
 
 (use-package magit
   :defer t
@@ -322,7 +327,8 @@ the `header-line-inactive' face alone can't do."
   :custom (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1))
 
 (use-package diff-hl
-  :demand t
+  :defer 0.5                            ; load just after startup; the global mode
+                                        ; catches buffers opened before then
   :hook
   ((dired-mode . diff-hl-dired-mode)
    (magit-post-refresh . diff-hl-magit-post-refresh))
@@ -473,7 +479,7 @@ the `header-line-inactive' face alone can't do."
   (jtsx-enable-jsx-element-tags-auto-sync nil)
   (jtsx-enable-all-syntax-highlighting-features t))
 
-(use-package rust-mode)
+(use-package rust-mode :defer t)
 
 (use-package gdscript-mode
   :defer t
@@ -506,6 +512,7 @@ the `header-line-inactive' face alone can't do."
 
 (use-package org
   :ensure nil
+  :defer t
   :custom
   (org-hide-emphasis-markers t)
   (org-startup-folded 'fold)
@@ -580,6 +587,7 @@ the `header-line-inactive' face alone can't do."
 
 (use-package which-key
   :ensure nil
+  :defer 1
   :config (which-key-mode))
 
 (use-package expand-region
@@ -594,7 +602,7 @@ the `header-line-inactive' face alone can't do."
 (use-package zoom-window
   :commands zoom-window-zoom)
 
-(use-package agent-shell)
+(use-package agent-shell :defer t)
 
 (use-package jwt
   :ensure (:host github :repo "sugol-a/jwt.el")

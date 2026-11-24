@@ -31,6 +31,20 @@
             (setq gc-cons-threshold core:gc-cons-threshold
                   gc-cons-percentage 0.1)))
 
+;; Every `load'/`require' during startup runs file names through the
+;; handler regexps (TRAMP, compressed files...).  None apply to our own
+;; files, so skip them until startup is done.
+(defvar core:--file-name-handler-alist file-name-handler-alist)
+(setq file-name-handler-alist nil)
+(add-hook 'emacs-startup-hook
+          (lambda ()
+            ;; keep anything added during startup, restore the rest
+            (setq file-name-handler-alist
+                  (delete-dups (append file-name-handler-alist
+                                       core:--file-name-handler-alist))))
+          ;; early, before anything else on the hook touches files
+          -90)
+
 ;; LSP servers send big payloads; the 4k default means many tiny reads.
 (setq read-process-output-max (* 1024 1024))
 
