@@ -111,7 +111,10 @@ Lisp memory is flat.  nil disables it.")
 (defun core:-frame-created (frame)
   ;; Face tweaks that measure the font (e.g. bar padding) can't be done
   ;; until a graphical frame exists -- relevant when running as a daemon.
-  (when (display-graphic-p frame)
+  (when (and (display-graphic-p frame)
+             ;; child frames (posframes, overlays...) have their own tiny
+             ;; fonts; measuring them would resize every frame's bar
+             (not (frame-parameter frame 'parent-frame)))
     (with-selected-frame frame
       (core:-run-theme-faces-functions))))
 
