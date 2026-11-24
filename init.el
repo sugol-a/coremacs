@@ -214,9 +214,6 @@
                         (concat (propertize " \xe725 " 'face '(al:header-icon shadow))
                                 (propertize (cdr info) 'face 'shadow)))))))
 
-(defvar al:window-focus-style 'both
-  "One of `flash', `header', `both' or nil.")
-
 (defface al:header-focus '((t :inherit al:header-icon))
   "Selected-window marker in the header line.")
 
@@ -226,23 +223,28 @@
 (defface al:header-dim '((t))
   "Laid over the header of unselected windows.")
 
-(defun al:-header-focus-p ()
-  (memq al:window-focus-style '(header both)))
-
 (defvar-local al:header-focus
-    '(:eval (when (al:-header-focus-p)
-              (propertize "▎" 'face (if (mode-line-window-selected-p)
-                                              'al:header-focus
-                                            'al:header-focus-off)))))
+    '(:eval (propertize "▎" 'face (if (mode-line-window-selected-p)
+                                       'al:header-focus
+                                     'al:header-focus-off))))
 
 (defun al:header-dimmed (format)
   "Render FORMAT, dimmed as a whole when this isn't the selected window.
 Dimming the rendered string overrides every segment's own colours, which
 the `header-line-inactive' face alone can't do."
   (let ((string (format-mode-line format)))
-    (when (and (al:-header-focus-p) (not (mode-line-window-selected-p)))
+    (unless (mode-line-window-selected-p)
       (add-face-text-property 0 (length string) 'al:header-dim nil string))
     string))
+
+(defun al:header-focus-faces ()
+  (when (custom-theme-enabled-p 'catppuccin)
+    (set-face-attribute 'al:header-focus nil :foreground (catppuccin-color 'sky))
+    (set-face-attribute 'al:header-focus-off nil
+                        :foreground (face-background 'header-line nil 'default))
+    (set-face-attribute 'al:header-dim nil :foreground (catppuccin-color 'overlay0))))
+
+(add-hook 'core:theme-faces-functions #'al:header-focus-faces)
 
 (setq-default core:mode-line-position 'top
               core:mode-line-buffer-status-token-read-only "\xf444"
@@ -624,158 +626,6 @@ the `header-line-inactive' face alone can't do."
 (dolist (command '(recenter-top-bottom consult-line consult-imenu
                    consult-goto-line xref-find-definitions xref-go-back))
   (advice-add command :after #'al:pulse-line))
-
-;; WINDOW FOCUS
-;; ============================================================
-;; Two ways of showing which window is selected; try them with
-;; `al:cycle-window-focus-style'.
-;;   flash  - flash an accent border around the newly selected window
-;;   header - accent bar in the selected window's header, others dimmed
-
-(defun al:cycle-window-focus-style ()
-  "Cycle `al:window-focus-style' to compare the approaches."
-  (interactive)
-  (setq al:window-focus-style
-        (pcase al:window-focus-style
-          ('both 'flash) ('flash 'header) ('header nil) (_ 'both)))
-  (force-mode-line-update t)
-  (message "Window focus style: %s" al:window-focus-style))
-
-(require 'color)
-
-(defface al:window-flash '((t))
-  "Background is the colour the selected window's border flashes in.")
-
-(defvar al:window-flash-duration 0.4
-  "Seconds the border flash lasts (holds, then fades).")
-
-(defvar al:window-border-width 3
-  "Thickness of the flashed border, in pixels.")
-
-;; Emacs has no per-window border, so draw one: four thin solid child
-;; frames laid along the window's edges.  They never take focus and are
-;; created once per frame, then just moved/recoloured/hidden.
-
-(defun al:-border-buffer ()
-  (or (get-buffer " *window-border*")
-      (with-current-buffer (get-buffer-create " *window-border*")
-        (setq-local mode-line-format nil
-                    header-line-format nil
-                    tab-line-format nil
-                    cursor-type nil
-                    cursor-in-non-selected-windows nil)
-        (current-buffer))))
-
-(defvar al:--border-strips nil
-  "Alist of (PARENT-FRAME . STRIP-FRAMES).")
-
-(defun al:-border-strips (parent)
-  (let ((strips (alist-get parent al:--border-strips)))
-    (unless (and strips (seq-every-p #'frame-live-p strips))
-      (setq al:--border-strips (seq-filter (lambda (e) (frame-live-p (car e))) al:--border-strips))
-      (setq strips
-            (with-selected-frame parent
-              (mapcar (lambda (_)
-                        (let ((frame (make-frame
-                                      `((parent-frame . ,parent)
-                                        (minibuffer . nil)
-                                        (visibility . nil)
-                                        (no-accept-focus . t)
-                                        (no-focus-on-map . t)
-                                        (no-other-frame . t)
-                                        (skip-taskbar . t)
-                                        (unsplittable . t)
-                                        (undecorated . t)
-                                        (desktop-dont-save . t)
-                                        ;; tiny font so the frame can be a few px thin
-                                        (font . "Monospace 1")
-                                        (min-width . 0)
-                                        (min-height . 0)
-                                        (internal-border-width . 0)
-                                        (child-frame-border-width . 0)
-                                        (left-fringe . 0)
-                                        (right-fringe . 0)
-                                        (vertical-scroll-bars . nil)
-                                        (menu-bar-lines . 0)
-                                        (tool-bar-lines . 0)
-                                        (tab-bar-lines . 0)))))
-                          (set-window-buffer (frame-root-window frame) (al:-border-buffer))
-                          (set-window-dedicated-p (frame-root-window frame) t)
-                          frame))
-                      '(top bottom left right))))
-      (setf (alist-get parent al:--border-strips) strips))
-    strips))
-
-(defvar al:--flash-timer nil)
-
-(defun al:-flash-stop ()
-  (when al:--flash-timer
-    (cancel-timer al:--flash-timer)
-    (setq al:--flash-timer nil))
-  (dolist (entry al:--border-strips)
-    (dolist (strip (cdr entry))
-      (when (frame-live-p strip)
-        (make-frame-invisible strip t)))))
-
-(defun al:-flash-window (window)
-  "Flash a border around WINDOW: hold the accent colour, then fade it out."
-  (al:-flash-stop)
-  (pcase-let* ((`(,left ,top ,right ,bottom) (window-pixel-edges window))
-               (w al:window-border-width)
-               (strips (al:-border-strips (window-frame window)))
-               (geometry `((,left ,top ,(- right left) ,w)                 ; top
-                           (,left ,(- bottom w) ,(- right left) ,w)        ; bottom
-                           (,left ,top ,w ,(- bottom top))                 ; left
-                           (,(- right w) ,top ,w ,(- bottom top))))        ; right
-               (from (color-name-to-rgb (face-background 'al:window-flash nil 'default)))
-               (to (color-name-to-rgb (face-background 'default)))
-               (colors (mapcar (lambda (c) (apply #'color-rgb-to-hex (append c '(2))))
-                               (append (make-list 4 from) (color-gradient from to 6))))
-               (step 0))
-    (seq-mapn (lambda (strip geo)
-                (set-frame-parameter strip 'background-color (car colors))
-                (set-frame-size strip (nth 2 geo) (nth 3 geo) t)
-                (set-frame-position strip (nth 0 geo) (nth 1 geo))
-                (make-frame-visible strip))
-              strips geometry)
-    (let ((tick (/ al:window-flash-duration (length colors))))
-      (setq al:--flash-timer
-            (run-with-timer tick tick
-                            (lambda ()
-                              (setq step (1+ step))
-                              (if (>= step (length colors))
-                                  (al:-flash-stop)
-                                (unless (equal (nth step colors) (nth (1- step) colors))
-                                  (dolist (strip strips)
-                                    (set-frame-parameter strip 'background-color
-                                                         (nth step colors)))))))))))
-
-(defvar al:--last-selected-window nil)
-
-(defun al:-on-window-selection-change (frame)
-  (let ((window (frame-selected-window frame)))
-    ;; Ignore the minibuffer, so M-x and back doesn't flash.
-    (unless (window-minibuffer-p window)
-      (when (and (memq al:window-focus-style '(flash both))
-                 (window-live-p al:--last-selected-window)
-                 (not (eq window al:--last-selected-window))
-                 (eq frame (selected-frame)))
-        (al:-flash-window window))
-      (setq al:--last-selected-window window))))
-
-(add-hook 'window-selection-change-functions #'al:-on-window-selection-change)
-
-(defun al:window-focus-faces ()
-  (when (custom-theme-enabled-p 'catppuccin)
-    (require 'color)
-    (let ((bg (face-background 'header-line nil 'default)))
-      (set-face-attribute 'al:header-focus nil :foreground (catppuccin-color 'sky))
-      (set-face-attribute 'al:header-focus-off nil :foreground bg)
-      ;; Dim everything in unselected header lines.
-      (set-face-attribute 'al:header-dim nil :foreground (catppuccin-color 'overlay0))
-      (set-face-attribute 'al:window-flash nil :background (catppuccin-color 'sky)))))
-
-(add-hook 'core:theme-faces-functions #'al:window-focus-faces)
 
 ;; EDITING
 ;; ============================================================
