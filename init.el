@@ -307,6 +307,9 @@ the `header-line-inactive' face alone can't do."
    ("M-s r" . consult-ripgrep)
    ("M-y" . consult-yank-pop))
   :custom
+  ;; completion-at-point (agent-shell's / and @, M-TAB, ...) in vertico
+  ;; instead of a full-frame *Completions* buffer
+  (completion-in-region-function #'consult-completion-in-region)
   (xref-show-xrefs-function #'consult-xref)
   (xref-show-definitions-function #'consult-xref))
 
