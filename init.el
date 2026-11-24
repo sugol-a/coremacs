@@ -558,6 +558,8 @@
 (use-package zoom-window
   :commands zoom-window-zoom)
 
+(use-package agent-shell)
+
 (use-package jwt
   :ensure (:host github :repo "sugol-a/jwt.el")
   :commands jwt-console)
