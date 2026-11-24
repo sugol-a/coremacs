@@ -101,6 +101,8 @@ Faces set with `set-face-attribute' are wiped out whenever a theme is
 here rather than in a one-off `:config'.")
 
 (defun core:-run-theme-faces-functions (&rest _)
+  (when (boundp 'core:--glyph-cache)
+    (clrhash core:--glyph-cache))
   (run-hooks 'core:theme-faces-functions))
 
 (defvar core:malloc-trim-idle-delay 60
@@ -172,17 +174,20 @@ Lisp memory is flat.  nil disables it.")
 (defface core:mode-line-major-mode '((t :inherit mode-line))
   "Face for mode line major mode.")
 
+(defun core:-status-token (token face)
+  (propertize token 'face face 'display `(raise ,(core:center-raise face token))))
+
 (defvar-local core:mode-line-buffer-status
     '(:eval (cond
              (buffer-read-only
-              (propertize core:mode-line-buffer-status-token-read-only
-                          'face 'core:mode-line-buffer-status-read-only))
+              (core:-status-token core:mode-line-buffer-status-token-read-only
+                                  'core:mode-line-buffer-status-read-only))
              ((buffer-modified-p)
-              (propertize core:mode-line-buffer-status-token-modified
-                          'face 'core:mode-line-buffer-status-modified))
+              (core:-status-token core:mode-line-buffer-status-token-modified
+                                  'core:mode-line-buffer-status-modified))
              (t
-              (propertize core:mode-line-buffer-status-token-read-write
-                          'face 'core:mode-line-buffer-status-read-write))))
+              (core:-status-token core:mode-line-buffer-status-token-read-write
+                                  'core:mode-line-buffer-status-read-write))))
   "Displays the current buffer status (read-only/modified/writable).")
 
 ;;; Project / branch, cached per buffer
@@ -285,37 +290,108 @@ walks the filesystem and finding the branch spawns git."
 (defvar core:mode-line-window-controls-scale 1.4
   "Size of the window controls relative to the bar's text.")
 
-(defvar core:--window-controls-raise 0
-  "`raise' that centres the scaled controls on the text.  Computed from
-the actual font metrics by `core:-size-window-controls'.")
+(defun core:-bar-face ()
+  (if (eq core:mode-line-position 'top) 'header-line 'mode-line))
 
-(defun core:-font-center (face)
-  "Return (CENTER . HEIGHT) in pixels for FACE's font on this frame.
-CENTER is the middle of the font's line box, measured up from the baseline."
-  (when-let* ((name (face-font face))
-              (info (font-info name)))
-    (let ((ascent (aref info 8))
-          (descent (aref info 9)))
-      (cons (/ (- ascent descent) 2.0) (+ ascent descent)))))
+;;; Optical centring
+;;
+;; Everything in a bar shares one baseline, and a font's line box is not
+;; where its glyphs visibly sit.  So measure actual ink: centre every
+;; icon on the middle of the text's capital letters, then size the bar so
+;; that same line is its middle.  All from live font metrics, recomputed
+;; on theme/font/frame changes -- no pixel constants.
+
+(defvar core:--glyph-cache (make-hash-table :test #'equal))
+
+(defun core:-glyph-metrics (face string)
+  "Return (INK-ASCENT INK-DESCENT FONT-ASCENT FONT-DESCENT) in pixels for
+the first visible character of STRING drawn in FACE, or nil."
+  (when-let* (((display-graphic-p))
+              (char (seq-find (lambda (c) (not (memq c '(?\s ?\t)))) string))
+              (s (propertize (string char) 'face face))
+              (font (font-at 0 nil s))
+              (glyph (aref (font-get-glyphs font 0 1 s) 0))
+              (info (query-font font)))
+    (list (aref glyph 7) (aref glyph 8) (aref info 4) (aref info 5))))
+
+(defun core:-cap-center ()
+  "Pixels from the baseline to the middle of the bar text's capitals."
+  (or (gethash :cap-center core:--glyph-cache)
+      (when-let* ((m (core:-glyph-metrics (core:-bar-face) "H")))
+        (puthash :cap-center (/ (- (nth 0 m) (nth 1 m)) 2.0) core:--glyph-cache))))
+
+(defun core:center-raise (face string)
+  "`raise' factor that centres STRING's ink (in FACE) on the bar text.
+Cached; use it in mode-line constructs as (raise FACTOR)."
+  (let ((key (cons face string)))
+    (or (gethash key core:--glyph-cache)
+        (let ((m (core:-glyph-metrics face string))
+              (cap (core:-cap-center)))
+          (if (and m cap (> (+ (nth 2 m) (nth 3 m)) 0))
+              (puthash key
+                       (/ (- cap (/ (- (nth 0 m) (nth 1 m)) 2.0))
+                          (+ (nth 2 m) (nth 3 m)))
+                       core:--glyph-cache)
+            0)))))
 
 (defun core:-size-window-controls ()
-  "Scale the window controls and compute the `raise' that centres them.
-Everything in a bar shares one baseline, so a bigger glyph has its middle
-higher than the text's; lower it by the difference.  Works from the live
-font metrics, so it holds across font and size changes."
   (when (display-graphic-p)
     (set-face-attribute 'core:mode-line-window-controls-active nil
-                        :height core:mode-line-window-controls-scale)
-    (let ((text (core:-font-center (if (eq core:mode-line-position 'top) 'header-line 'mode-line)))
-          (icon (core:-font-center 'core:mode-line-window-controls-active)))
-      (setq core:--window-controls-raise
-            (if (and text icon (> (cdr icon) 0))
-                (/ (- (car text) (car icon)) (cdr icon))
-              0)))))
+                        :height core:mode-line-window-controls-scale)))
+
+(defun core:-controls-raise ()
+  (core:center-raise 'core:mode-line-window-controls-active
+                     (alist-get 'close core:mode-line-window-controls-symbols-alist)))
+
+;;; Balance: make the text's cap-centre the visual middle of the bar
+;;
+;; Rather than guess the line's extent from whatever glyphs are in it,
+;; pin it: one space raised to set the top, one lowered to set the bottom,
+;; both a margin beyond the tallest element (the scaled window controls).
+;; With the box padding being symmetric, the caps' middle is then the
+;; bar's middle.  A frame internal border in the bar's own colour reads as
+;; extra padding on its side, so the opposite side is extended to match.
+
+(defvar core:--bar-balance '(0 . 0)
+  "(RAISE-UP . RAISE-DOWN) factors for the two balance spaces.")
+
+(defun core:-compute-balance ()
+  (setq core:--bar-balance '(0 . 0))
+  (when-let* ((text (core:-glyph-metrics (core:-bar-face) "H"))
+              (cap (core:-cap-center)))
+    (let* ((a (nth 2 text)) (d (nth 3 text))
+           ;; half-height needed around the caps' middle
+           (half (max (- a cap) (+ d cap))))
+      (when-let* ((ctl (core:-glyph-metrics
+                        'core:mode-line-window-controls-active
+                        (alist-get 'close core:mode-line-window-controls-symbols-alist))))
+        (let ((shift (* (core:-controls-raise) (+ (nth 2 ctl) (nth 3 ctl)))))
+          (setq half (max half
+                          (- (+ (nth 2 ctl) shift) cap)       ; above caps' middle
+                          (- cap (- shift (nth 3 ctl)))))))   ; below
+      (setq half (1+ half))
+      (let* ((border (if (equal (face-background 'internal-border nil t)
+                                (face-background (core:-bar-face) nil 'default))
+                         (or (frame-parameter nil 'internal-border-width) 0)
+                       0))
+             (top (+ cap half (if (eq core:mode-line-position 'top) 0 border)))
+             (bottom (- cap half (if (eq core:mode-line-position 'top) border 0)))
+             (h (float (+ a d))))
+        ;; a space raised by R px spans [R - D, A + R]
+        (setq core:--bar-balance (cons (/ (- top a) h)
+                                       (/ (+ bottom d) h)))))))
+
+(defvar-local core:mode-line-balance
+    '(:eval (concat (propertize " " 'display `(raise ,(car core:--bar-balance)))
+                    (propertize " " 'display `(raise ,(cdr core:--bar-balance)))))
+  "Two spaces that pin the bar's height so its contents sit centred.
+Place it near the start of `core:mode-line-format' (it's appended if
+absent, but text past the right-aligned edge may be clipped, and a
+clipped glyph doesn't count towards the bar's height).")
 
 (defun core:-window-controls ()
   (let ((active (core:-top-right-window-p (get-buffer-window)))
-        (display `(raise ,core:--window-controls-raise)))
+        (display `(raise ,(core:-controls-raise))))
     (mapcar (lambda (spec)
               (let ((symbol (alist-get (car spec) core:mode-line-window-controls-symbols-alist)))
                 (if active
@@ -363,6 +439,7 @@ one element instead grows the line upwards from the shared baseline."
 
 (add-hook 'core:theme-faces-functions #'core:-pad-bar)
 (add-hook 'core:theme-faces-functions #'core:-size-window-controls 90)
+(add-hook 'core:theme-faces-functions #'core:-compute-balance 95)
 
 ;;; Right alignment
 
@@ -415,11 +492,14 @@ header line and mode line."
         core:mode-line-window-controls))
 
 (defun core:mode-line-setup ()
-  (if (eq 'top core:mode-line-position)
-      (setq-default mode-line-format nil
-                    header-line-format core:mode-line-format)
-    (setq-default header-line-format nil
-                  mode-line-format core:mode-line-format)))
+  (let ((format (if (memq core:mode-line-balance core:mode-line-format)
+                    core:mode-line-format
+                  (append core:mode-line-format (list core:mode-line-balance)))))
+    (if (eq 'top core:mode-line-position)
+        (setq-default mode-line-format nil
+                      header-line-format format)
+      (setq-default header-line-format nil
+                    mode-line-format format))))
 
 ;; ------------------------------------------------------------
 

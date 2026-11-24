@@ -190,12 +190,12 @@
 
 (defvar-local al:header-eglot
     '(:eval (when-let* ((icon (al:buffer-icon)))
-              (concat " "
-                      (propertize icon
+              (concat (propertize icon
                                   'face (list (if (bound-and-true-p eglot--managed-mode)
                                                   'al:header-eglot-on
                                                 'al:header-eglot-off)
                                               (get-text-property 0 'face icon))
+                                  'display `(raise ,(core:center-raise 'al:header-icon icon))
                                   'mouse-face 'highlight
                                   'help-echo "mouse-1: toggle eglot"
                                   'keymap al:header-eglot-map)
@@ -211,7 +211,10 @@
     '(:eval (when-let* ((info (core:project-info)))
               (concat (propertize (car info) 'face 'core:mode-line-project)
                       (when (cdr info)
-                        (concat (propertize " \xe725 " 'face '(al:header-icon shadow))
+                        (concat " "
+                                (propertize "\xe725" 'face '(al:header-icon shadow)
+                                            'display `(raise ,(core:center-raise 'al:header-icon "\xe725")))
+                                " "
                                 (propertize (cdr info) 'face 'shadow)))))))
 
 (defface al:header-focus '((t :inherit al:header-icon))
@@ -254,6 +257,7 @@ the `header-line-inactive' face alone can't do."
               '((minimize . " \xeaba ") (maximize . " \xeab9 ") (close . " \xeab8 "))
               core:mode-line-format
               (list al:header-focus
+                    core:mode-line-balance   ; two spaces; also centres the bar vertically
                     `(:eval (al:header-dimmed '(,al:header-eglot " " ,al:header-buffer-name " ")))
                     ;; not dimmed: the unmodified dot is deliberately invisible.
                     ;; hidden-buffer terminals (" *terminal*") get no status dot.
@@ -263,8 +267,7 @@ the `header-line-inactive' face alone can't do."
                     'core:mode-line-format-right-align
                     core:mode-line-flycheck
                     "    "
-                    core:mode-line-window-controls
-                    " "))
+                    core:mode-line-window-controls))
 
 ;; COMPLETION
 ;; ============================================================
