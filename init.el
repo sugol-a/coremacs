@@ -564,14 +564,18 @@
   :ensure (:host github :repo "sugol-a/jwt.el")
   :commands jwt-console)
 
+;; Terminal emulator for popup-term.  Unlike term.el it answers the
+;; capability queries modern shells send (fish 4 hangs 10s without it),
+;; does truecolor, and is a lot faster.
+(use-package eat
+  :defer t
+  :custom
+  (eat-kill-buffer-on-exit t)
+  (eat-term-scrollback-size (* 1024 1024)))
+
 (use-package popup-term
   :ensure nil
-  :bind ("C-," . popup-term-toggle)
-  :config
-  (add-hook 'popup-term-setup-hook
-            (lambda ()
-              (term-set-escape-char ?\C-x)
-              (set-window-fringes nil 0 0))))
+  :bind ("C-," . popup-term-toggle))
 
 ;; Bottom side windows for eldoc and flycheck error lists
 (dolist (regexp (list (rx bos "*eldoc") (rx bos "*Flycheck errors*" eos)))
