@@ -1,3 +1,5 @@
+;; -*- lexical-binding: t; -*-
+
 (require 'coremacs)
 
 (let ((private-file (expand-file-name "private.el" user-emacs-directory)))
@@ -37,7 +39,7 @@
                 (propertize (concat " " icon " ") 'display '(raise 0.1) 'mouse-face 'highlight 'face face 'keymap (al:mode-line-eglot-mouse-map))))))
 
 (use-package s)
-(setq-default core:font "Adwaita Mono 13"
+(setq-default core:font "Adwaita Mono 9"
               core:mode-line-position 'top
               core:mode-line-buffer-status-token-read-only "\xf444"
               core:mode-line-buffer-status-token-modified "\xf444"
@@ -68,6 +70,8 @@
 
 (set-face-font 'core:mode-line-window-controls-active "AdwaitaMono Nerd Font 13")
 (set-face-attribute 'mode-line nil :underline)
+
+(setq project-vc-extra-root-markers '("package.json" "tsconfig.json"))
 
 ;; PACKAGES
 ;; ============================================================
@@ -155,9 +159,16 @@
         ("C-c l i" . #'eglot-inlay-hints-mode)
         ("C-c l a" . #'eglot-code-actions))
   :config
+  (setq al:intelephense-stubs ["apache" "bcmath" "bz2" "calendar" "com_dotnet" "Core" "ctype" "curl" "date" "dba" "dom" "enchant" "exif" "FFI" "fileinfo" "filter" "fpm" "ftp" "gd" "gettext" "gmp" "hash" "iconv" "imap" "intl" "json" "ldap" "libxml" "mailparse" "mbstring" "meta" "mysqli" "oci8" "odbc" "openssl" "pcntl" "pcre" "PDO" "pdo_ibm" "pdo_mysql" "pdo_pgsql" "pdo_sqlite" "pgsql" "Phar" "posix" "pspell" "readline" "Reflection" "session" "shmop" "SimpleXML" "snmp" "soap" "sockets" "sodium" "SPL" "sqlite3" "standard" "superglobals" "sysvmsg" "sysvsem" "sysvshm" "tidy" "tokenizer" "xml" "xmlreader" "xmlrpc" "xmlwriter" "xsl" "Zend OPcache" "zip" "zlib"])
+  
   ;; point eglot to intelephense for php
   (add-to-list 'eglot-server-programs
-               '((php-ts-mode :language-id "php") . ("intelephense" "--stdio" :initializationOptions)))
+               '((php-ts-mode :language-id "php") . ("intelephense" "--stdio" :initializationOptions))
+               ;; '((php-ts-mode :language-id "php") . ("phpactor" "language-server" :initializationOptions))
+               )
+
+  (setq-default eglot-workspace-configuration
+                `(:intelephense (:stubs ,al:intelephense-stubs)))
 
   (when-let* ((vacuum-executable (executable-find "vacuum"))
               (vacuum-version-str (shell-command-to-string (string-join (list vacuum-executable "version") " ")))
@@ -186,6 +197,11 @@
   (add-hook 'eglot-managed-mode-hook (lambda ()
                                        (flymake-mode -1)
                                        (flycheck-mode 1))))
+
+(use-package eglot-booster
+	:ensure (:host "github.com" :repo "jdtsmith/eglot-booster")
+	:after eglot
+	:config (eglot-booster-mode))
 
 (use-package eldoc
   :ensure nil
@@ -264,10 +280,10 @@
   :commands (web-mode)
   :mode (("\\.blade\\.php\\'" . web-mode)))
 
-(use-package treesit-auto
-  :config
-  (setq treesit-auto-install 'prompt)
-  (global-treesit-auto-mode))
+;; (use-package treesit-auto
+;;   :config
+;;   (setq treesit-auto-install 'prompt)
+;;   (global-treesit-auto-mode))
 
 (add-hook 'yaml-ts-mode-hook (lambda () (setq-local tab-width 2)))
 
@@ -796,3 +812,4 @@
 (add-hook 'c-mode-common-hook #'c-mode-setup)
 
 (core:init)
+(put 'scroll-left 'disabled nil)

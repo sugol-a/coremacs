@@ -1,3 +1,5 @@
+;; -*- lexical-binding: t; -*-
+
 (menu-bar-mode -1)
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
@@ -13,6 +15,6 @@
 
 (add-hook 'after-init-hook
 	  (lambda ()
-	    (setq gc-cons-threshold (* 4 (default-value 'gc-cons-threshold)))))
+	    (setq gc-cons-threshold 800000)))
 
 (provide 'coremacs-early-init)

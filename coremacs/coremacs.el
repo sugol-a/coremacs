@@ -4,15 +4,15 @@
 
 ;; ------------------------------------------------------------
 ;; "https://github.com/progfolio/elpaca?tab=readme-ov-file#installer"
-(defvar elpaca-installer-version 0.11)
+(defvar elpaca-installer-version 0.12)
 (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
 (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
-(defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
+(defvar elpaca-sources-directory (expand-file-name "sources/" elpaca-directory))
 (defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
                               :ref nil :depth 1 :inherit ignore
                               :files (:defaults "elpaca-test.el" (:exclude "extensions"))
-                              :build (:not elpaca--activate-package)))
-(let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
+                              :build (:not elpaca-activate)))
+(let* ((repo  (expand-file-name "elpaca/" elpaca-sources-directory))
        (build (expand-file-name "elpaca/" elpaca-builds-directory))
        (order (cdr elpaca-order))
        (default-directory repo))
@@ -47,7 +47,18 @@
 (elpaca `(,@elpaca-order))
 (elpaca elpaca-use-package
   (elpaca-use-package-mode)
-  (setq elpaca-use-package-by-default t))
+  ;; `elpaca-use-package-by-default' was removed from elpaca-use-package
+  ;; (commit 98262e4, 2026-02). The supported way to make every `use-package'
+  ;; declaration install via Elpaca is `use-package-always-ensure' (Elpaca
+  ;; advises the `:ensure' handler). `:ensure nil' still opts a form out.
+  (setq use-package-always-ensure t))
+
+;; Block until elpaca-use-package is installed/activated so the `use-package'
+;; forms in the init file are expanded with Elpaca's `:ensure' support active.
+;; Without this, in an interactive/daemon session (where Elpaca processes its
+;; queue asynchronously) those forms run as plain use-package before the mode
+;; is enabled, causing "Cannot load <pkg>" errors and a fatal boot.
+(elpaca-wait)
 
 ;; ------------------------------------------------------------
 

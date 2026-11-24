@@ -1,3 +1,5 @@
+;; -*- lexical-binding: t; -*-
+
 (add-to-list 'load-path (expand-file-name "~/.emacs.d/coremacs"))
 
 (add-to-list 'default-frame-alist
@@ -11,6 +13,6 @@
 
 (add-to-list 'default-frame-alist '(internal-border-width . 6))
 
-(add-to-list 'default-frame-alist '(font . "Adwaita Mono 13"))
+(add-to-list 'default-frame-alist '(font . "Adwaita Mono 9"))
 
 (require 'coremacs-early-init)
