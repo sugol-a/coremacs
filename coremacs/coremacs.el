@@ -91,7 +91,8 @@
 
 (defun core:ui:-font-changed (_symbol newval operation _where)
   (when (and newval (eq operation 'set) (display-graphic-p))
-    (set-frame-font newval nil t)))
+    (set-frame-font newval nil t)
+    (core:-run-theme-faces-functions)))
 
 (defvar core:theme-faces-functions nil
   "Functions run after a theme is enabled, to (re)apply face tweaks.
@@ -107,9 +108,17 @@ here rather than in a one-off `:config'.")
 glibc tends to hang on to freed memory, so RSS keeps climbing even though
 Lisp memory is flat.  nil disables it.")
 
+(defun core:-frame-created (frame)
+  ;; Face tweaks that measure the font (e.g. bar padding) can't be done
+  ;; until a graphical frame exists -- relevant when running as a daemon.
+  (when (display-graphic-p frame)
+    (with-selected-frame frame
+      (core:-run-theme-faces-functions))))
+
 (defun core:ui-setup ()
   (add-variable-watcher 'core:font #'core:ui:-font-changed)
   (add-hook 'enable-theme-functions #'core:-run-theme-faces-functions)
+  (add-hook 'after-make-frame-functions #'core:-frame-created)
   (core:-run-theme-faces-functions)
   (when (and core:malloc-trim-idle-delay (fboundp 'malloc-trim))
     (run-with-idle-timer core:malloc-trim-idle-delay t #'malloc-trim)))
@@ -270,16 +279,51 @@ walks the filesystem and finding the branch spawns git."
        (memq window (window-at-side-list nil 'right))
        t))
 
+(defvar core:mode-line-window-controls-scale 1.4
+  "Size of the window controls relative to the bar's text.")
+
+(defvar core:--window-controls-raise 0
+  "`raise' that centres the scaled controls on the text.  Computed from
+the actual font metrics by `core:-size-window-controls'.")
+
+(defun core:-font-center (face)
+  "Return (CENTER . HEIGHT) in pixels for FACE's font on this frame.
+CENTER is the middle of the font's line box, measured up from the baseline."
+  (when-let* ((name (face-font face))
+              (info (font-info name)))
+    (let ((ascent (aref info 8))
+          (descent (aref info 9)))
+      (cons (/ (- ascent descent) 2.0) (+ ascent descent)))))
+
+(defun core:-size-window-controls ()
+  "Scale the window controls and compute the `raise' that centres them.
+Everything in a bar shares one baseline, so a bigger glyph has its middle
+higher than the text's; lower it by the difference.  Works from the live
+font metrics, so it holds across font and size changes."
+  (when (display-graphic-p)
+    (set-face-attribute 'core:mode-line-window-controls-active nil
+                        :height core:mode-line-window-controls-scale)
+    (let ((text (core:-font-center (if (eq core:mode-line-position 'top) 'header-line 'mode-line)))
+          (icon (core:-font-center 'core:mode-line-window-controls-active)))
+      (setq core:--window-controls-raise
+            (if (and text icon (> (cdr icon) 0))
+                (/ (- (car text) (car icon)) (cdr icon))
+              0)))))
+
 (defun core:-window-controls ()
-  (let ((active (core:-top-right-window-p (get-buffer-window))))
+  (let ((active (core:-top-right-window-p (get-buffer-window)))
+        (display `(raise ,core:--window-controls-raise)))
     (mapcar (lambda (spec)
               (let ((symbol (alist-get (car spec) core:mode-line-window-controls-symbols-alist)))
                 (if active
                     (propertize symbol
                                 'local-map (symbol-value (cdr spec))
                                 'mouse-face 'highlight
+                                'display display
                                 'face 'core:mode-line-window-controls-active)
-                  (propertize symbol 'face 'core:mode-line-window-controls-inactive))))
+                  (propertize symbol
+                              'display display
+                              'face 'core:mode-line-window-controls-inactive))))
             '((minimize . core:mode-line-window-controls-minimize-map)
               (maximize . core:mode-line-window-controls-maximize-map)
               (close . core:mode-line-window-controls-close-map)))))
@@ -295,6 +339,27 @@ walks the filesystem and finding the branch spawns git."
                                    nil 'default)))
 
 (add-hook 'core:theme-faces-functions #'core:-hide-inactive-window-controls)
+
+;;; Vertical padding
+
+(defvar core:mode-line-padding 0.4
+  "Padding above and below the bar, as a fraction of the font's line height.
+Relative, so it scales with font changes.  nil disables it.")
+
+(defun core:-pad-bar ()
+  "Pad the bar evenly top and bottom with a box in its own background.
+Padding via a box keeps the contents vertically centred; enlarging any
+one element instead grows the line upwards from the shared baseline."
+  (when (and core:mode-line-padding (display-graphic-p))
+    (let ((face (if (eq core:mode-line-position 'top) 'header-line 'mode-line)))
+      (set-face-attribute face nil
+                          :box (list :line-width
+                                     (cons -1 (max 1 (round (* core:mode-line-padding
+                                                              (frame-char-height)))))
+                                     :color (face-background face nil 'default))))))
+
+(add-hook 'core:theme-faces-functions #'core:-pad-bar)
+(add-hook 'core:theme-faces-functions #'core:-size-window-controls 90)
 
 ;;; Right alignment
 

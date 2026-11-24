@@ -97,7 +97,7 @@
 ;; so it is re-applied after every flavour switch (load-theme resets any
 ;; `set-face-attribute' done on themed faces).
 
-(defface al:header-buffer '((t :family "Adwaita Sans" :height 0.9))
+(defface al:header-buffer '((t :family "Adwaita Sans"))
   "Header line buffer name.")
 
 (defface al:header-buffer-special '((t :inherit al:header-buffer :weight bold))
@@ -152,11 +152,14 @@
 (use-package nerd-icons
   :custom (nerd-icons-font-family "AdwaitaMono Nerd Font"))
 
+;; Icons stay at the text's size: the Nerd Font is patched Adwaita Mono,
+;; so its glyphs are centred in the same cell as the text.  Mixing sizes
+;; puts everything on a shared baseline and the text sinks to the bottom.
 (dolist (face '(core:mode-line-buffer-status-modified
                 core:mode-line-buffer-status-read-only
                 core:mode-line-buffer-status-read-write
                 core:mode-line-window-controls-active))
-  (set-face-attribute face nil :family "AdwaitaMono Nerd Font" :height 130))
+  (set-face-attribute face nil :family "AdwaitaMono Nerd Font"))
 
 ;; HEADER LINE
 ;; ============================================================
@@ -193,7 +196,6 @@
                                                   'al:header-eglot-on
                                                 'al:header-eglot-off)
                                               (get-text-property 0 'face icon))
-                                  'display '(raise 0.1)
                                   'mouse-face 'highlight
                                   'help-echo "mouse-1: toggle eglot"
                                   'keymap al:header-eglot-map)
