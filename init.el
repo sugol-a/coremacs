@@ -271,7 +271,8 @@ the `header-line-inactive' face alone can't do."
                     'core:mode-line-format-right-align
                     core:mode-line-flycheck
                     "    "
-                    core:mode-line-window-controls))
+                    core:mode-line-window-controls
+                    "  "))
 
 ;; COMPLETION
 ;; ============================================================
