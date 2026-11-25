@@ -1,12 +1,20 @@
 ;;; eca-show.el --- Let ECA agents show what they're working on -*- lexical-binding: t; -*-
 
 ;;; Commentary:
-;; Called by agents via `emacsclient -e' (see ~/.local/bin/eca-show).
-;; Each agent ID (the main agent is "main", subagents e.g. "dev-1") gets its
-;; own window on a visible graphical frame, a highlight overlay on the lines
-;; it's working on, and a small child frame beside them with a note.
-;; Highlight and note colours come from the Catppuccin palette, per agent.
-;; `eca-show-release' frees an agent's slot; `eca-show-clear' clears all.
+;; Called by agents via `emacsclient -e':
+;;
+;;   Show a file/region:
+;;     emacsclient -s SERVER -e \
+;;       '(eca-show-region "/abs/path" START END "NOTE" "AGENT-ID")'
+;;
+;;   Release when done:
+;;     emacsclient -s SERVER -e '(eca-show-release "AGENT-ID")'
+;;
+;; SERVER defaults to "server"; AGENT-ID defaults to "main".
+;; Each agent ID gets its own window on a visible graphical frame, a highlight
+;; overlay on the lines it's working on, and a small child frame beside them
+;; with a note.  Highlight and note colours come from the Catppuccin palette,
+;; per agent.  `eca-show-clear' clears all agents at once.
 
 ;;; Code:
 
@@ -156,6 +164,7 @@
     (when (overlayp ov) (delete-overlay ov)))
   (posframe-hide (eca-show--note-buffer id)))
 
+;;;###autoload
 (defun eca-show-release (id)
   "Free agent ID's slot, closing its window if eca-show created it."
   (interactive (list (completing-read "Release agent: " (mapcar #'car eca-show--slots))))
@@ -167,15 +176,19 @@
       (delete-window w))
     (setq eca-show--slots (assoc-delete-all id eca-show--slots))))
 
+;;;###autoload
 (defun eca-show-clear ()
   "Remove every agent's highlight and note (windows are kept)."
   (interactive)
   (mapc (lambda (s) (eca-show--clear-slot (car s))) eca-show--slots))
 
+;;;###autoload
 (defun eca-show-region (file &optional start end note id)
   "Show FILE for agent ID, highlight lines START to END, and NOTE beside them.
+FILE is expanded relative to `default-directory' if not absolute.
 ID defaults to \"main\". Return the buffer name."
-  (let* ((id (if (and id (not (string-empty-p id))) id "main"))
+  (let* ((file (expand-file-name file))
+         (id (if (and id (not (string-empty-p id))) id "main"))
          (accent (or (plist-get (eca-show--slot id) :accent) (eca-show--next-accent))))
     (eca-show--clear-slot id)
     (let ((win (eca-show--window-for id)))
