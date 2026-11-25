@@ -320,6 +320,8 @@ the `header-line-inactive' face alone can't do."
   (company-idle-delay 0.1)
   (company-minimum-prefix-length 2))
 
+(use-package eca :defer t)
+
 ;; GIT
 ;; ============================================================
 
